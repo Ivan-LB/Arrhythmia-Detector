@@ -16,12 +16,12 @@ from scipy.signal import iirnotch, lfilter, find_peaks
 import pywt
 
 # Windows
-#DATASET_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\mit-bih-arrhythmia-database-1.0.0\\Dataset\\No usar'
+DATASET_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\mit-bih-arrhythmia-database-1.0.0\\Dataset\\Entrenamiento'
 #MODEL_SAVE_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code'
-#CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features2.csv'
+CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features3.csv'
 # Mac
-DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset50'
-CSV_FILE_PATH = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/ProyectoPrueba/ecg_features1.csv'
+#DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset50'
+#CSV_FILE_PATH = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/ProyectoPrueba/ecg_features1.csv'
 
 # Function definitions
 def get_ml_ii_index(header_lines):
@@ -170,34 +170,18 @@ def main():
     
     annotation_mapping = {
         # Beats Normales y Bloqueos de Rama
-        "N": 0,
-        "L": 1,
-        "R": 2,
-        "e": 3,
-        "j": 4,
-        
+        "N": 0, "L": 1, "R": 2, "e": 3, "j": 4,
         # Beats Atriales
-        "A": 5,
-        "a": 6,
-        "S": 7,
-        
+        "A": 5, "a": 6, "S": 7,
         # Beats Nodales
-        "J": 8,
-        
+        "J": 8, 
         # Beats Ventriculares
-        "V": 9,
-        "E": 10,
-        "F": 11,
-        "!": 12,
-        
+        "V": 9, "E": 10, "F": 11, "!": 12,
         # Beats Marcados (Paced)
-        "/": 13,
-        "f": 14,
+        "/": 13, "f": 14,
         
         # Beats No Clasificables y Artefactos
-        "x": 15,
-        "Q": 16,
-        "|": 17
+        "x": 15, "Q": 16, "|": 17
     }
 
 
@@ -271,7 +255,7 @@ def main():
                 rhythm_label = closest_rhythm_labels[i]
                 annotation_label = closest_annotations[i] if i < len(closest_annotations) else "Unknown"
                 
-                plt.figure(figsize=(8, 3))
+                #plt.figure(figsize=(8, 3))
                 #plt.plot(signal_filtered, label = 'ECG') # Selecciona el canal MLII (columna 0)
                 #plt.plot(peaks, signal_filtered[peaks], 'rx', label = 'Picos R')
                 # plt.plot(signal_windowed_normalized, '--') # Selecciona el canal MLII (columna 0)
