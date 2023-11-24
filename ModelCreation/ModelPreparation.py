@@ -20,7 +20,7 @@ import pywt
 #MODEL_SAVE_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code'
 #CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features2.csv'
 # Mac
-DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset'
+DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset50'
 CSV_FILE_PATH = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/ProyectoPrueba/ecg_features1.csv'
 
 # Function definitions
@@ -171,45 +171,43 @@ def main():
     annotation_mapping = {
         # Beats Normales y Bloqueos de Rama
         "N": 0,
-        "L": 0,
-        "R": 0,
-        "e": 0,
-        "j": 0,
+        "L": 1,
+        "R": 2,
+        "e": 3,
+        "j": 4,
         
         # Beats Atriales
-        "A": 1,
-        "a": 1,
-        "S": 1,
+        "A": 5,
+        "a": 6,
+        "S": 7,
         
         # Beats Nodales
-        "J": 2,
+        "J": 8,
         
         # Beats Ventriculares
-        "V": 3,
-        "E": 3,
-        "F": 3,
-        "!": 3,
+        "V": 9,
+        "E": 10,
+        "F": 11,
+        "!": 12,
         
         # Beats Marcados (Paced)
-        "/": 4,
-        "f": 4,
+        "/": 13,
+        "f": 14,
         
         # Beats No Clasificables y Artefactos
-        "x": 5,
-        "Q": 6,
-        "|": 5
+        "x": 15,
+        "Q": 16,
+        "|": 17
     }
+
 
     # "(N": "Normal sinus rhythm", 0
     # "(SBR": "Sinus bradycardia", 1
-    # "(SVTA": "Supraventricular tachyarrhythmia", 2
+    # "(SVTA": "Supraventricular tachycardia", 2
     # "(VT": "Ventricular tachycardia", 3
     
     rhythm_annotation_mapping = {
-        "(N": 0,
-        "(SBR": 2,
-        "(SVTA": 3,
-        "(VT": 4
+        "(N": 0, "(SBR": 2, "(SVTA": 3, "(VT": 4
     }
     
     # Procesar cada registro
@@ -218,100 +216,78 @@ def main():
         record_path = os.path.join(DATASET_DIRECTORY, record_name)
         record = wfdb.rdrecord(record_path)
         annotation = wfdb.rdann(record_path, 'atr')
-        
-        # Leer las anotaciones de ritmo
         rhythm_annotations = wfdb.rdann(record_path, 'atr')
         rhythm_labels = []
-        
+    
         with open(record_path + '.hea', 'r') as header_file:
             header_lines = header_file.readlines()
-        
+    
         ml_ii_index = get_ml_ii_index(header_lines)
-        
         current_rhythm_label = 'Unknown'
         
-        # Iterar sobre todas las anotaciones
+        # Iterate over all annotations
         for ann_index, ann_sample in enumerate(rhythm_annotations.sample):
-            ann_label = rhythm_annotations.aux_note[ann_index].rstrip('\x00')  # Eliminar '\x00'
-            # Comprueba si la anotación es una cadena vacía y, si lo es, simplemente continúa con el último valor conocido
+            ann_label = rhythm_annotations.aux_note[ann_index].rstrip('\x00')
             if ann_label == '':
                 pass
-            # Si la anotación actual es una anotación de ritmo y está en el mapeo, actualiza current_rhythm_label
             elif ann_label in rhythm_annotation_mapping:
                 current_rhythm_label = rhythm_annotation_mapping[ann_label]
-            # Si la anotación no está en el mapeo y no es una cadena vacía, establece current_rhythm_label a "Unknown"
             else:
                 current_rhythm_label = "Unknown"
-            # Añade la etiqueta de ritmo actual a la lista rhythm_labels
             rhythm_labels.append(current_rhythm_label)
 
-        # Verificar si se encontró el índice del canal MLII
         if ml_ii_index is not None:
-            # Extraer la señal del canal MLII
             signal = record.p_signal[:, ml_ii_index]
         else:
-            # Manejar el caso en el que no se encuentre el canal MLII
-            print(f"El canal MLII no se encontró en el registro {record_name}.")
-            continue  # Puedes decidir continuar con el siguiente registro o tomar otra acción
-        # Procesamiento de la señal
-        
+            print(f"MLII channel not found in {record_name}.")
+            continue
+    
         signal_centered = signal - np.mean(signal)
-        #signal_normalized = min_max_normalize(signal_centered)
-        
-        # Aplicar Fitro Notch para remover las frecuencias de 50/60Hz que puedan interferir
         fs = record.fs
         b, a = iirnotch(60, 30, fs)
         signal_filtered = lfilter(b, a, signal_centered)
-        
-        # Detectar los picos R de la señal de ECG
+    
+        # Detect R peaks in ECG signal
         peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * fs))
-        
-        # Convertir los picos a indices de tiempo
         peak_times = peaks / fs
-
-        # Encontrar la anotación más cercana a los picos R
-        closest_annotations = []
-        for peak_time in peak_times:
-            closest_index = np.argmin(np.abs(annotation.sample / fs - peak_time))
-            original_symbol = annotation.symbol[closest_index]
-            # Map the original symbol to the normalized label
-            normalized_label = annotation_mapping.get(original_symbol, "Unknown")
-            closest_annotations.append(normalized_label)
-            
-        closest_rhythm_labels = []
-        for peak_time in peak_times:
-            closest_index = np.argmin(np.abs(rhythm_annotations.sample / fs - peak_time))
-            closest_rhythm_label = rhythm_labels[closest_index]
-            closest_rhythm_labels.append(closest_rhythm_label)
-
-        # Ventana de análisis alrededor de cada pico R
-        width = 1  # Ancho de la ventana en segundos
+    
+        # Find closest annotations to R peaks
+        closest_annotations = [annotation_mapping.get(annotation.symbol[np.argmin(np.abs(annotation.sample / fs - pt))], "Unknown") for pt in peak_times]
+        closest_rhythm_labels = [rhythm_labels[np.argmin(np.abs(rhythm_annotations.sample / fs - pt))] for pt in peak_times]
+    
+        width = 1  # Window width in seconds
         print(len(peaks))
         for i, peak in enumerate(peaks):
             print(i)
-            
-            # Aplicar la ventana alrededor del pico R
-
             signal_windowed = apply_window(signal_filtered, peak, width, fs)
-            
+    
             if signal_windowed is not None:
                 signal_windowed_normalized = min_max_normalize(signal_windowed)
-                
-                # Procesamiento de la señal en la ventana
-                distanceW = int(0.45 * fs)  # Estimación del intervalo entre picos R (0.6 segundos)
+                distanceW = int(0.45 * fs)
                 peaksW, _ = find_peaks(signal_windowed_normalized, distance=distanceW)
                 peaksW = peaksW[signal_windowed_normalized[peaksW] > 0.6]
+                std_val = np.std(signal_windowed_normalized)
                 
-                std_val = np.std(signal_windowed_normalized)  # Desviación estándar
-        
-                # Encuentra la etiqueta de ritmo más cercana al pico R actual
                 rhythm_label = closest_rhythm_labels[i]
                 annotation_label = closest_annotations[i] if i < len(closest_annotations) else "Unknown"
-        
-                # Calcular la FFT y la Transformada Wavelet
+                
+                plt.figure(figsize=(8, 3))
+                #plt.plot(signal_filtered, label = 'ECG') # Selecciona el canal MLII (columna 0)
+                #plt.plot(peaks, signal_filtered[peaks], 'rx', label = 'Picos R')
+                # plt.plot(signal_windowed_normalized, '--') # Selecciona el canal MLII (columna 0)
+                # plt.plot(peaksW, signal_windowed_normalized[peaksW], 'rx', label = 'Picos R')
+                # # for time in annotation.sample:
+                # #     plt.axvline(x=time, color='r', linestyle='--')
+                # plt.title('ECG Signal')
+                # plt.xlabel('Muestras')
+                # plt.ylabel('Amplitud')
+                # plt.axis([0, 1000, -0.2, 1.1]) #make visible slower frequency period
+                # plt.show()
+                
+                # FFT and Wavelet Transform
                 total_spectral_energy, total_psd, dominant_freq, wavelet_Energy, total_shannon_entropy = calculate_fft_and_wavelet(signal_windowed_normalized, record.fs)
-        
-                # Extraer características para la señal actual en la ventana
+    
+                # Extract features for the current signal in the window
                 features = {
                     "RPeakCount": len(peaksW),
                     "MaxRAmplitude": np.max(signal_windowed_normalized) if len(signal_windowed_normalized) > 0 else 0,
@@ -324,8 +300,7 @@ def main():
                     "BeatType": annotation_label,
                     "RhythmClass": rhythm_label
                 }
-        
-                # Crear y actualizar DataFrame
+    
                 create_dataframe(features)
 
 # Entry point
