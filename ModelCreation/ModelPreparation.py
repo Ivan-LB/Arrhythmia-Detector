@@ -9,36 +9,21 @@ Created on Wed Nov  8 14:20:58 2023
 import os
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import wfdb
 from sineWave import boxcar
 from scipy.signal import iirnotch, lfilter, find_peaks
 import pywt
 
-DATASET_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\mit-bih-arrhythmia-database-1.0.0\\Dataset\\No usar'
-MODEL_SAVE_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code'
-CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features2.csv'
+# Windows
+#DATASET_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\mit-bih-arrhythmia-database-1.0.0\\Dataset\\No usar'
+#MODEL_SAVE_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code'
+#CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features2.csv'
+# Mac
+DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset'
+CSV_FILE_PATH = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/ProyectoPrueba/ecg_features1.csv'
 
 # Function definitions
-def get_demographics(header_lines):
-    """
-    The function `get_demographics` extracts age and gender information from a list of header lines and
-    returns them as a tuple.
-    
-    :param header_lines: A list of strings representing the header lines of a data file. Each string in
-    the list represents a line of the header
-    :return: the age and gender values extracted from the header lines.
-    """
-    for line in header_lines:
-        if line.startswith('#'):
-            parts = line.split()
-            # Assuming age and gender are in positions 2 and 3 respectively
-            age = parts[1] if len(parts) > 3 else None  # El índice debe ser 1 para la edad
-            gender_str = parts[2] if len(parts) > 4 else None  # El índice debe ser 2 para el género
-            # Convertir el género a un valor numérico
-            gender = int(0) if gender_str == 'M' else int(1) if gender_str == 'F' else None
-            return age, gender
-    return None, None  # In case the information is not found
-
 def get_ml_ii_index(header_lines):
     """
     The function `get_ml_ii_index` returns the index of the line before the line containing 'MLII' in a
@@ -66,41 +51,39 @@ def calculate_fft_and_wavelet(signal_windowed, fs):
     :return: The function `calculate_fft_and_wavelet` returns four values: `total_power`,
     `dominant_freq`, `wavelet_Energy`, and `total_shannon_entropy`.
     """
-    # Calculate the FFT and FFT power
+    ## FFT y cálculo de energía
     fft_coeffs = np.fft.rfft(signal_windowed)
     fft_freq = np.fft.rfftfreq(len(signal_windowed), 1/fs)
     fft_power = np.abs(fft_coeffs)**2
-    
-    # Power and Dominant Frequency
-    total_power = np.sum(fft_power)
-    dominant_freq = fft_freq[np.argmax(fft_power)]
-    
-    # Parameters for wavelets - Adjusted for a broader range of scales
-    wavelet_name = 'mexh'
-    maxScale = 16  # Example max scale, adjust based on your signal's characteristics
-    minScale = 1
-    scaleStep = 1  # Example scale step, adjust as needed
 
-    # Wavelet Transform with adjusted scales
-    scales = np.arange(minScale, maxScale + scaleStep, scaleStep)
-    coefc, freqs = pywt.cwt(signal_windowed, scales, wavelet_name)
-    wavelet_Energy = np.sum(coefc**2)
+    # Frecuencia dominante (excluyendo la componente DC)
+    dominant_freq_index = np.argmax(fft_power[1:])
+    dominant_freq = fft_freq[1:][dominant_freq_index]
 
-    # Energy of the wavelet coefficients
+    # Densidad espectral de potencia (PSD)
+    N = len(signal_windowed)
+    df = fs / N
+    PSD = (np.abs(fft_coeffs) ** 2) / df
+    PSD[1:-1] *= 2  # Ajuste para frecuencias no DC
+    total_PSD = np.sum(PSD)
+
+    # Energía espectral total
+    total_spectral_energy = np.sum(fft_power)
+
+    # Transformada Wavelet
+    scales = np.arange(1, 17)  # Ajustar según las necesidades
+    coefc, _ = pywt.cwt(signal_windowed, scales, 'mexh')
+    wavelet_energy = np.sum(coefc**2)
+
+    # Entropía de Shannon
     energy = np.sum(coefc**2, axis=1)
-    # Ensure no division by zero
-    energy[energy == 0] = np.finfo(float).eps
-
-    # Convert coefficients to a probability distribution
+    energy[energy == 0] = np.finfo(float).eps  # Evitar división por cero
     prob_dist = coefc**2 / energy[:, None]
-    # Normalize to ensure it sums to 1
     prob_dist /= np.sum(prob_dist, axis=1)[:, None]
-
-    # Calculate Shannon entropy for each scale
     shannon_entropy = -np.sum(prob_dist * np.log2(prob_dist), axis=1)
-    # Calculate total entropy
     total_shannon_entropy = np.mean(shannon_entropy)
-    return total_power, dominant_freq, wavelet_Energy, total_shannon_entropy
+
+    return total_spectral_energy, total_PSD, dominant_freq, wavelet_energy, total_shannon_entropy
 
 def create_dataframe(features):
     """
@@ -132,15 +115,11 @@ def apply_window(signal, peak, fs, width=1):
     the length of the segment of interest around the peak, defaults to 1 (optional)
     :return: the windowed segment of the signal based on the specified peak and width.
     """
-    # Tiempo inicial del segmento de interés basado en el pico R actual
     start_index = max(peak - int(width/2 * fs), 0)
     end_index = min(peak + int(width/2 * fs), len(signal))
 
-    # Asegurarse de que no estemos intentando crear una ventana con una longitud negativa
     if start_index < end_index:
-        # Extraer la ventana de la señal
-        signal_windowed = signal[start_index:end_index]
-        return signal_windowed
+        return signal[start_index:end_index]
     return None
 
 def min_max_normalize(signal):
@@ -248,7 +227,6 @@ def main():
             header_lines = header_file.readlines()
         
         ml_ii_index = get_ml_ii_index(header_lines)
-        age, gender = get_demographics(header_lines)
         
         current_rhythm_label = 'Unknown'
         
@@ -278,12 +256,12 @@ def main():
         # Procesamiento de la señal
         
         signal_centered = signal - np.mean(signal)
-        signal_normalized = min_max_normalize(signal_centered)
+        #signal_normalized = min_max_normalize(signal_centered)
         
         # Aplicar Fitro Notch para remover las frecuencias de 50/60Hz que puedan interferir
         fs = record.fs
         b, a = iirnotch(60, 30, fs)
-        signal_filtered = lfilter(b, a, signal_normalized)
+        signal_filtered = lfilter(b, a, signal_centered)
         
         # Detectar los picos R de la señal de ECG
         peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * fs))
@@ -313,36 +291,38 @@ def main():
             print(i)
             
             # Aplicar la ventana alrededor del pico R
+
             signal_windowed = apply_window(signal_filtered, peak, width, fs)
             
             if signal_windowed is not None:
+                signal_windowed_normalized = min_max_normalize(signal_windowed)
+                
                 # Procesamiento de la señal en la ventana
                 distanceW = int(0.45 * fs)  # Estimación del intervalo entre picos R (0.6 segundos)
-                peaksW, _ = find_peaks(signal_windowed, distance=distanceW)
-                peaksW = peaksW[signal_windowed[peaksW] > 0.2]
-        
-                std_val = np.std(signal_windowed)  # Desviación estándar
+                peaksW, _ = find_peaks(signal_windowed_normalized, distance=distanceW)
+                peaksW = peaksW[signal_windowed_normalized[peaksW] > 0.6]
+                
+                std_val = np.std(signal_windowed_normalized)  # Desviación estándar
         
                 # Encuentra la etiqueta de ritmo más cercana al pico R actual
                 rhythm_label = closest_rhythm_labels[i]
                 annotation_label = closest_annotations[i] if i < len(closest_annotations) else "Unknown"
         
                 # Calcular la FFT y la Transformada Wavelet
-                fft_power, dominant_freq, wavelet_Energy, total_shannon_entropy = calculate_fft_and_wavelet(signal_windowed, record.fs)
+                total_spectral_energy, total_psd, dominant_freq, wavelet_Energy, total_shannon_entropy = calculate_fft_and_wavelet(signal_windowed_normalized, record.fs)
         
                 # Extraer características para la señal actual en la ventana
                 features = {
-                    "picosR": len(peaksW),
-                    "amplitudR": np.max(signal_windowed) if len(signal_windowed) > 0 else 0,
-                    "potencia": fft_power,
-                    "frecDominante": dominant_freq,
-                    "energiaWavelet": wavelet_Energy,
-                    "entropiaShannonW": total_shannon_entropy,
-                    "sexo": gender,
-                    "edad": age,
-                    "std": std_val,
-                    "tipoLatido": annotation_label,
-                    "clase": rhythm_label
+                    "RPeakCount": len(peaksW),
+                    "MaxRAmplitude": np.max(signal_windowed_normalized) if len(signal_windowed_normalized) > 0 else 0,
+                    "SpectralEnergy": total_spectral_energy,
+                    "TotalPSD": total_psd,
+                    "DominantFrequency": dominant_freq,
+                    "WaveletEnergy": wavelet_Energy,
+                    "ShannonEntropy": total_shannon_entropy,
+                    "SignalSTD": std_val,
+                    "BeatType": annotation_label,
+                    "RhythmClass": rhythm_label
                 }
         
                 # Crear y actualizar DataFrame
