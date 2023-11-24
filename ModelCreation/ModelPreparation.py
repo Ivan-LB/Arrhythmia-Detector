@@ -143,6 +143,22 @@ def apply_window(signal, peak, fs, width=1):
         return signal_windowed
     return None
 
+def min_max_normalize(signal):
+    """
+    The function `min_max_normalize` takes a signal as input and returns a normalized version of the
+    signal using min-max normalization.
+    
+    :param signal: The input signal is a one-dimensional array or list of numerical values
+    :return: the normalized signal.
+    """
+    min_val = np.min(signal)
+    max_val = np.max(signal)
+    range_val = max_val - min_val
+    if range_val == 0:
+        return np.zeros_like(signal)
+    normalized_signal = (signal - min_val) / range_val
+    return normalized_signal
+
 def main():
     # Carga los nombres de archivos del dataset
     hea_files = [f for f in os.listdir(DATASET_DIRECTORY) if f.endswith('.hea')]
@@ -174,46 +190,44 @@ def main():
     # }
     
     annotation_mapping = {
-        # Ritmos Normales y Bloqueos de Rama
+        # Beats Normales y Bloqueos de Rama
         "N": 0,
         "L": 0,
         "R": 0,
         "e": 0,
         "j": 0,
         
-        # Ritmos Atriales
+        # Beats Atriales
         "A": 1,
         "a": 1,
         "S": 1,
         
-        # Ritmos Nodales
+        # Beats Nodales
         "J": 2,
         
-        # Ritmos Ventriculares
+        # Beats Ventriculares
         "V": 3,
         "E": 3,
         "F": 3,
         "!": 3,
         
-        # Ritmos Marcados (Paced)
+        # Beats Marcados (Paced)
         "/": 4,
         "f": 4,
         
-        # Ritmos No Clasificables y Artefactos
+        # Beats No Clasificables y Artefactos
         "x": 5,
         "Q": 6,
         "|": 5
     }
 
     # "(N": "Normal sinus rhythm", 0
-    # "(P": "Paced rhythm", 1
-    # "(SBR": "Sinus bradycardia", 2
-    # "(SVTA": "Supraventricular tachyarrhythmia", 3
-    # "(VT": "Ventricular tachycardia" 4
+    # "(SBR": "Sinus bradycardia", 1
+    # "(SVTA": "Supraventricular tachyarrhythmia", 2
+    # "(VT": "Ventricular tachycardia", 3
     
     rhythm_annotation_mapping = {
         "(N": 0,
-        "(P": 1,
         "(SBR": 2,
         "(SVTA": 3,
         "(VT": 4
@@ -264,7 +278,7 @@ def main():
         # Procesamiento de la señal
         
         signal_centered = signal - np.mean(signal)
-        signal_normalized = signal_centered / np.max(np.abs(signal_centered))
+        signal_normalized = min_max_normalize(signal_centered)
         
         # Aplicar Fitro Notch para remover las frecuencias de 50/60Hz que puedan interferir
         fs = record.fs
