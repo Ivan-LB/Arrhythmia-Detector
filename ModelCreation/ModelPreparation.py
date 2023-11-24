@@ -178,20 +178,18 @@ def main():
         # Beats Ventriculares
         "V": 9, "E": 10, "F": 11, "!": 12,
         # Beats Marcados (Paced)
-        "/": 13, "f": 14,
-        
+        #"/": 13, "f": 14
         # Beats No Clasificables y Artefactos
-        "x": 15, "Q": 16, "|": 17
+        #"x": 15, "Q": 16, "|": 17
     }
 
 
     # "(N": "Normal sinus rhythm", 0
     # "(SBR": "Sinus bradycardia", 1
-    # "(SVTA": "Supraventricular tachycardia", 2
     # "(VT": "Ventricular tachycardia", 3
     
     rhythm_annotation_mapping = {
-        "(N": 0, "(SBR": 2, "(SVTA": 3, "(VT": 4
+        "(N": 0, "(SBR": 1, "(VT": 2
     }
     
     # Procesar cada registro
