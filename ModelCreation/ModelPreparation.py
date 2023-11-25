@@ -165,13 +165,13 @@ def main():
     
     annotation_mapping = {
         # Beats Normales y Bloqueos de Rama
-        "N": 0, "L": 1, "R": 2, "e": 3, "j": 4,
+        "N": 0, "R": 2,#"L": 1,  "e": 3, "j": 4,
         # Beats Atriales
-        "A": 5, "a": 6, "S": 7,
+        "A": 5, #"a": 6, "S": 7,
         # Beats Nodales
-        "J": 8, 
+        #"J": 8, 
         # Beats Ventriculares
-        "V": 9, "E": 10, "F": 11, "!": 12,
+        "V": 9 #,"E": 10, "F": 11, #"!": 12,
         # Beats Marcados (Paced)
         #"/": 13, "f": 14
         # Beats No Clasificables y Artefactos
