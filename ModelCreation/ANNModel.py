@@ -1,4 +1,5 @@
 import pandas as pd
+import joblib
 import numpy as np
 import itertools
 from sklearn.model_selection import train_test_split
@@ -133,6 +134,7 @@ print(f'Rhythm Model - Loss: {rhythm_loss}, Accuracy: {rhythm_accuracy}')
 model_beat.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_beat.h5')
 model_rhythm.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_rhythm.h5')
 print("Modelos guardados como 'modelo_ecg_beat.keras' y 'modelo_ecg_rhythm.keras'")
+joblib.dump(scaler, 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\scaler_ecg.pk1')
 
 # Predicciones y Matrices de Confusión
 y_pred_beat = model_beat.predict(X_test)
