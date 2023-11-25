@@ -17,7 +17,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.utils import class_weight
 
 # Cargar datos
-ruta_csv = 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Data\\Final_ecg_features.csv'  # Reemplaza con la ruta a tu archivo CSV
+ruta_csv = 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Data\\ecg_features3.csv'  # Reemplaza con la ruta a tu archivo CSV
 datos = pd.read_csv(ruta_csv)
 
 # Separar características y etiquetas
@@ -41,8 +41,6 @@ y_train_rhythm_smote = to_categorical(y_train_rhythm_smote)
 
 # Configurar EarlyStopping
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
-model_checkpoint_beat = ModelCheckpoint('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\bestBeatModel.h5', save_best_only=True)
-model_checkpoint_rhythm = ModelCheckpoint('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\bestRhythmModel.h5', save_best_only=True)
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
 
 # model_beat = Sequential([
@@ -80,7 +78,7 @@ model_beat.compile(optimizer=optimizer_sgd_beat,
 history_beat = model_beat.fit(X_train_smote_beat, y_train_beat_smote, 
                               validation_split=0.15, epochs=90, 
                               batch_size=80, shuffle=True, verbose=1, 
-                              callbacks=[early_stopping, model_checkpoint_beat, reduce_lr])
+                              callbacks=[early_stopping, reduce_lr])
 model_beat.summary()
 model_beat.get_weights()
 model_beat.optimizer
@@ -118,7 +116,7 @@ model_rhythm.compile(optimizer=optimizer_adamax_beat,
 history_rhythm = model_rhythm.fit(X_train_smote_rhythm, y_train_rhythm_smote, 
                                   validation_split=0.15, epochs=90, 
                                   batch_size=80, shuffle=True, verbose=1, 
-                                  callbacks=[early_stopping, model_checkpoint_rhythm, reduce_lr])
+                                  callbacks=[early_stopping, reduce_lr])
 model_rhythm.summary()
 model_rhythm.get_weights()
 model_rhythm.optimizer
@@ -132,8 +130,8 @@ rhythm_loss, rhythm_accuracy = model_rhythm.evaluate(X_test, y_test_rhythm)
 print(f'Rhythm Model - Loss: {rhythm_loss}, Accuracy: {rhythm_accuracy}')
 
 # Guardar los modelos
-model_beat.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_beat.keras')
-model_rhythm.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_rhythm.keras')
+model_beat.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo2_ecg_beat1.keras')
+model_rhythm.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo2_ecg_rhythm.keras')
 print("Modelos guardados como 'modelo_ecg_beat.keras' y 'modelo_ecg_rhythm.keras'")
 
 # Predicciones y Matrices de Confusión
@@ -197,7 +195,7 @@ def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.Blu
     plt.xlabel('Predicted label')
 
 # Nombres de las clases para los beats y ritmos
-class_names_beat = ['Normal', 'Left bundle', 'Right bundle','Atrial escape','Nodal escape','Atrial premature','Aberrated atrial premature','Supraventricular premature','Nodal premature','Premature ventricular contraction','Fusion of ventricular and normal']
+class_names_beat = ['Normal', 'Right bundle','Atrial premature','Premature ventricular contraction']
 class_names_rhythm = ['Normal', 'Bradycardia', 'Tachycardia'] 
 # Graficar las matrices de confusión para ambos modelos
 plt.figure(figsize=(10, 10))
