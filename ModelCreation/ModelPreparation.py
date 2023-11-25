@@ -53,7 +53,6 @@ def calculate_fft_and_wavelet(signal_windowed, fs):
     """
     ## FFT y cálculo de energía
     fft_coeffs = np.fft.rfft(signal_windowed)
-    fft_freq = np.fft.rfftfreq(len(signal_windowed), 1/fs)
     fft_power = np.abs(fft_coeffs)**2
 
     # Densidad espectral de potencia (PSD)
@@ -263,12 +262,11 @@ def main():
                 # plt.show()
                 
                 # FFT and Wavelet Transform
-                total_spectral_energy, total_psd, dominant_freq, wavelet_Energy, total_shannon_entropy = calculate_fft_and_wavelet(signal_windowed_normalized, record.fs)
+                total_spectral_energy, total_psd, wavelet_Energy, total_shannon_entropy = calculate_fft_and_wavelet(signal_windowed_normalized, record.fs)
     
                 # Extract features for the current signal in the window
                 features = {
                     "RPeakCount": len(peaksW),
-                    "MaxRAmplitude": np.max(signal_windowed_normalized) if len(signal_windowed_normalized) > 0 else 0,
                     "SpectralEnergy": total_spectral_energy,
                     "TotalPSD": total_psd,
                     "WaveletEnergy": wavelet_Energy,
@@ -277,7 +275,6 @@ def main():
                     "BeatType": annotation_label,
                     "RhythmClass": rhythm_label
                 }
-    
                 create_dataframe(features)
 
 # Entry point
