@@ -130,8 +130,8 @@ rhythm_loss, rhythm_accuracy = model_rhythm.evaluate(X_test, y_test_rhythm)
 print(f'Rhythm Model - Loss: {rhythm_loss}, Accuracy: {rhythm_accuracy}')
 
 # Guardar los modelos
-model_beat.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo2_ecg_beat1.keras')
-model_rhythm.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo2_ecg_rhythm.keras')
+model_beat.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_beat.h5')
+model_rhythm.save('C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Models\\modelo_ecg_rhythm.h5')
 print("Modelos guardados como 'modelo_ecg_beat.keras' y 'modelo_ecg_rhythm.keras'")
 
 # Predicciones y Matrices de Confusión
