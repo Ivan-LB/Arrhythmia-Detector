@@ -56,10 +56,6 @@ def calculate_fft_and_wavelet(signal_windowed, fs):
     fft_freq = np.fft.rfftfreq(len(signal_windowed), 1/fs)
     fft_power = np.abs(fft_coeffs)**2
 
-    # Frecuencia dominante (excluyendo la componente DC)
-    dominant_freq_index = np.argmax(fft_power[1:])
-    dominant_freq = fft_freq[1:][dominant_freq_index]
-
     # Densidad espectral de potencia (PSD)
     N = len(signal_windowed)
     df = fs / N
@@ -83,7 +79,7 @@ def calculate_fft_and_wavelet(signal_windowed, fs):
     shannon_entropy = -np.sum(prob_dist * np.log2(prob_dist), axis=1)
     total_shannon_entropy = np.mean(shannon_entropy)
 
-    return total_spectral_energy, total_PSD, dominant_freq, wavelet_energy, total_shannon_entropy
+    return total_spectral_energy, total_PSD, wavelet_energy, total_shannon_entropy
 
 def create_dataframe(features):
     """
@@ -275,7 +271,6 @@ def main():
                     "MaxRAmplitude": np.max(signal_windowed_normalized) if len(signal_windowed_normalized) > 0 else 0,
                     "SpectralEnergy": total_spectral_energy,
                     "TotalPSD": total_psd,
-                    "DominantFrequency": dominant_freq,
                     "WaveletEnergy": wavelet_Energy,
                     "ShannonEntropy": total_shannon_entropy,
                     "SignalSTD": std_val,

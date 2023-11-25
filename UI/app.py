@@ -11,7 +11,7 @@ import numpy as np
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap, QPalette, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect, QSpacerItem, QSizePolicy
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from draggableLabel import DraggableLabel
 import matplotlib.pyplot as plt
@@ -82,18 +82,54 @@ class App(QWidget):
         self.diagnosisSpace.setStyleSheet("border: 1px solid gray; height: 150px;")
         self.diagnosisSpace.setStyleSheet("background-color: white;")
         
-        diagnosis_layout = QVBoxLayout(self.diagnosisSpace)
+        # Layout para los botones
+        buttonsLayout = QVBoxLayout()
+        self.button1 = QPushButton("Back")
+        self.button1.setMinimumSize(200, 35)
+        self.button1.setMaximumSize(200, 35)
+        self.button1.setEnabled(False)  # Inicialmente deshabilitado
+        self.button1.setGraphicsEffect(shadow)
+        self.button1.setStyleSheet(
+            "QPushButton:enabled { background-color: #FF6347; color: white; border-radius: 10px; }"
+            "QPushButton:disabled { background-color: #CC4E39; color: white; border-radius: 10px; opacity: 0.8;}"
+            "QPushButton:hover:enabled { background-color: #FF4500; }"
+        )
+        self.button2 = QPushButton("Forward")
+        self.button2.setMinimumSize(200, 35)
+        self.button2.setMaximumSize(200, 35)
+        self.button2.setEnabled(False)  # Inicialmente deshabilitado
+        self.button2.setGraphicsEffect(shadow)
+        self.button2.setStyleSheet(
+            "QPushButton:enabled { background-color: #32CD32; color: white; border-radius: 10px; }"
+            "QPushButton:disabled { background-color: #289828; color: white; border-radius: 10px; opacity: 0.8;}"
+            "QPushButton:hover:enabled { background-color: #228B22; }"
+        )
+        self.button2.setGraphicsEffect(shadow)
+        buttonsLayout.addWidget(self.button1)
+        buttonsLayout.addWidget(self.button2)
         
-        # Resultados del modelo
-        self.resultsLabel = QLabel("Resultados del Modelo: ")
+        # Layout para las etiquetas
+        labelsLayout = QVBoxLayout()
+        self.resultsLabel = QLabel("Resultados del Modelo")
         self.resultsLabel.setStyleSheet("border: none;")
-        diagnosis_layout.addWidget(self.resultsLabel)
+        labelsLayout.addWidget(self.resultsLabel)
         
-        self.diagnosisResult = QLabel("Diagnostico: ")
-        self.diagnosisResult.setStyleSheet("border: none;")
-        diagnosis_layout.addWidget(self.diagnosisResult)
+        self.beatResult = QLabel("Tipo de Latido: ")
+        self.beatResult.setStyleSheet("border: none;")
+        labelsLayout.addWidget(self.beatResult)
         
+        self.rhythmResult = QLabel("Tipo de Ritmo: ")
+        self.rhythmResult.setStyleSheet("border: none;")
+        labelsLayout.addWidget(self.rhythmResult)
+        
+        # Layout horizontal que contiene los dos QVBoxLayouts
+        diagnosisLayout = QHBoxLayout(self.diagnosisSpace)
+        diagnosisLayout.addLayout(labelsLayout)
+        diagnosisLayout.addLayout(buttonsLayout)
+        
+        # Agregar el layout horizontal al widget principal
         layout.addWidget(self.diagnosisSpace)
+
         
         # Crear un QHBoxLayout para los botones
         buttonLayout = QHBoxLayout()
