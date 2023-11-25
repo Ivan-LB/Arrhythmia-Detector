@@ -4,12 +4,14 @@ import numpy as np
 import pandas as pd
 import wfdb
 import pywt
-from scipy.signal import iirnotch, lfilter, find_peaks
 import tensorflow as tf
+from scipy.signal import iirnotch, lfilter, find_peaks
 
+# Constantes
 MODEL_RHYTHM_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_rhythm.h5'
 MODEL_BEAT_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_beat.h5'
 SCALER_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/scaler_ecg.pk1'
+
 # Function definitions
 def get_ml_ii_index(header_lines):
     """
@@ -105,6 +107,16 @@ def min_max_normalize(signal):
     return normalized_signal
 
 def extract_features_from_window(signal_windowed, fs):
+    """
+    The function `extract_features_from_window` takes a windowed signal and its sampling frequency as
+    input, and extracts various features from the signal window.
+    
+    :param signal_windowed: The signal_windowed parameter is a windowed segment of a signal. It is
+    assumed to be centered around an R peak in an electrocardiogram (ECG) signal
+    :param fs: fs is the sampling frequency of the signal. It represents the number of samples taken per
+    second
+    :return: an array of features extracted from the input signal window.
+    """
     signal_windowed_normalized = min_max_normalize(signal_windowed)
     # Asumimos que signal_windowed ya es una ventana centrada en un pico R
     distanceW = int(0.45 * fs)
@@ -128,6 +140,14 @@ def extract_features_from_window(signal_windowed, fs):
     return np.array(features)
 
 def predict_ecg(features):
+    """
+    The `predict_ecg` function takes in a list of 6 ECG features, loads pre-trained models and a scaler,
+    normalizes the features, and makes predictions for beat and rhythm labels.
+    
+    :param features: The 'features' parameter is a list or array containing 6 numerical values. Each
+    value represents a specific feature of an electrocardiogram (ECG) signal. The features are:
+    :return: the predicted beat label and rhythm label.
+    """
     feature_labels = ["RPeakCount", "SpectralEnergy", "TotalPSD", "WaveletEnergy", "ShannonEntropy", "SignalSTD"]
     
     # Asegúrate de que 'features' es un array o lista con 6 elementos
@@ -159,6 +179,16 @@ def predict_ecg(features):
     return beat_labelP, rhythm_labelP
 
 def get_beat_label(prediction):
+    """
+    The function `get_beat_label` takes a prediction value and returns the corresponding beat label
+    based on a predefined mapping.
+    
+    :param prediction: The `prediction` parameter is a list containing the predicted value for a beat
+    :return: The function `get_beat_label` returns the label corresponding to the given prediction
+    value. If the prediction value is found in the `annotation_mapping` dictionary, the corresponding
+    label is returned. If the prediction value is not found in the dictionary, the function returns
+    "Unknown".
+    """
     pred_value = prediction[0]
     annotation_mapping = {
         0: "Normal",
@@ -185,15 +215,32 @@ def get_beat_label(prediction):
     return annotation_mapping.get(pred_value, "Unknown")
 
 def get_rhythm_label(prediction):
+    """
+    The function `get_rhythm_label` takes a prediction value and returns the corresponding rhythm label
+    based on a mapping.
+    
+    :param prediction: A list containing the predicted value for the rhythm classification
+    :return: the rhythm label based on the prediction value. If the prediction value is 0, it returns
+    "Normal sinus rhythm". If the prediction value is 1, it returns "Sinus bradycardia". If the
+    prediction value is 2, it returns "Ventricular tachycardia". If the prediction value is not 0, 1, or
+    """
     pred_value = prediction[0]
     rhythm_annotation_mapping = {
-        0: "Normal sinus rhythm",
-        1: "Sinus bradycardia", 
-        2: "Ventricular tachycardia"
+        0: "Normal Sinus Rhythm",
+        1: "Sinus Bradycardia", 
+        2: "Ventricular Tachycardia"
     }
     return rhythm_annotation_mapping.get(pred_value, "Unknown")
 
 def create_dataframe(features, csv_file_path):
+    """
+    The function creates a new row of data from a list of features and appends it to an existing CSV
+    file or creates a new CSV file if it doesn't exist.
+    
+    :param features: The "features" parameter is a list or array containing the values for each feature
+    or column in the dataframe. Each element in the list represents a value for a specific feature
+    :param csv_file_path: The file path where the CSV file will be saved or updated
+    """
     new_row = pd.DataFrame([features])
     if os.path.exists(csv_file_path):
         df = pd.read_csv(csv_file_path)
