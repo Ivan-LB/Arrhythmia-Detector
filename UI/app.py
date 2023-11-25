@@ -5,7 +5,6 @@ Created on Sat Nov  4 13:34:17 2023
 
 @author: ivanlorenzanabelli
 """
-
 import wfdb
 import numpy as np
 from PyQt5 import QtCore
@@ -91,7 +90,7 @@ class App(QWidget):
         self.button1.setGraphicsEffect(shadow)
         self.button1.setStyleSheet(
             "QPushButton:enabled { background-color: #FF6347; color: white; border-radius: 10px; }"
-            "QPushButton:disabled { background-color: #CC4E39; color: white; border-radius: 10px; opacity: 0.8;}"
+            "QPushButton:disabled { background-color: #A04030; color: white; border-radius: 10px; opacity: 0.8;}"
             "QPushButton:hover:enabled { background-color: #FF4500; }"
         )
         self.button2 = QPushButton("Forward")
@@ -101,7 +100,7 @@ class App(QWidget):
         self.button2.setGraphicsEffect(shadow)
         self.button2.setStyleSheet(
             "QPushButton:enabled { background-color: #32CD32; color: white; border-radius: 10px; }"
-            "QPushButton:disabled { background-color: #289828; color: white; border-radius: 10px; opacity: 0.8;}"
+            "QPushButton:disabled { background-color: #206820; color: white; border-radius: 10px; opacity: 0.8;}"
             "QPushButton:hover:enabled { background-color: #228B22; }"
         )
         self.button2.setGraphicsEffect(shadow)
@@ -158,8 +157,7 @@ class App(QWidget):
         
         # Agregar el QHBoxLayout al layout principal
         layout.addLayout(buttonLayout)
-        
-        pixmap = QPixmap('cool-background3.png')
+        pixmap = QPixmap('/Users/ivanlorenzanabelli/Arrhythmia-Detector/UI/cool-background3.png')
         palette = QPalette()
         palette.setBrush(QPalette.Background, QBrush(pixmap))
         self.setPalette(palette)
@@ -257,6 +255,8 @@ class App(QWidget):
             self.plotButton.setEnabled(False)
             self.fileLabelHEA.setEnabled(False)
             self.fileLabelDAT.setEnabled(False)
+            self.button1.setEnabled(True)
+            self.button2.setEnabled(True)
     
         except Exception as e:
             print(f"Error al procesar los archivos: {e}")
@@ -342,6 +342,8 @@ class App(QWidget):
         self.plotButton.setEnabled(False)
         self.diagnoseButton.setEnabled(False)
         self.deleteFileButtton.setEnabled(False)
+        self.button1.setEnabled(False)
+        self.button2.setEnabled(False)
 
         # Opcional: Limpiar el gráfico actual, si es necesario
         self.canvas.figure.clear()
