@@ -7,12 +7,14 @@ Created on Sat Nov  4 13:34:17 2023
 """
 import wfdb
 import numpy as np
+import pywt
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap, QPalette, QBrush, QColor
 from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect, QSpacerItem, QSizePolicy
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from draggableLabel import DraggableLabel
+import ecg_feature_extractor as ecg_features
 import matplotlib.pyplot as plt
 from scipy.signal import iirnotch, lfilter, find_peaks
 
@@ -86,6 +88,7 @@ class App(QWidget):
         self.button1 = QPushButton("Back")
         self.button1.setMinimumSize(200, 35)
         self.button1.setMaximumSize(200, 35)
+        self.button1.clicked.connect(self.prevWindow)
         self.button1.setEnabled(False)  # Inicialmente deshabilitado
         self.button1.setGraphicsEffect(shadow)
         self.button1.setStyleSheet(
@@ -96,6 +99,7 @@ class App(QWidget):
         self.button2 = QPushButton("Forward")
         self.button2.setMinimumSize(200, 35)
         self.button2.setMaximumSize(200, 35)
+        self.button2.clicked.connect(self.nextWindow)
         self.button2.setEnabled(False)  # Inicialmente deshabilitado
         self.button2.setGraphicsEffect(shadow)
         self.button2.setStyleSheet(
@@ -225,7 +229,6 @@ class App(QWidget):
             #self.ECGSeries = ... # Carga la serie ECG desde los archivos
             #self.plot(self.ECGSeries[self.current_position:self.current_position+254], self.current_position)
         except Exception as e:
-            print(f"Error: {e}")
             self.showErrorAlert(str(e))
          
     def plotECG(self):
@@ -233,22 +236,23 @@ class App(QWidget):
             # Cargar la señal ECG
             record = wfdb.rdrecord(self.heaFilePath.replace('.hea', ''))
             signal = record.p_signal[:, 0]
-    
+
             # Procesamiento básico de la señal
             signal_centered = signal - np.mean(signal)
-            signal_normalized = signal_centered / np.max(np.abs(signal_centered))
             b, a = iirnotch(60, 30, record.fs)
-            signal_filtered = lfilter(b, a, signal_normalized)
-    
+            signal_filtered = lfilter(b, a, signal_centered)
+
             # Detectar los picos R
             peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * record.fs))
-    
-            # Almacenar la señal filtrada para visualización
-            self.ECGSeries = signal_filtered
-    
-            # Graficar la señal ECG con picos R
-            self.plot(self.ECGSeries, 0, peaks)
-    
+
+            # Iniciar el índice de ventana actual
+            self.currentWindowIndex = 0
+            self.windows = [ecg_features.apply_window(signal_filtered, peak, record.fs) for peak in peaks]
+            # Graficar la primera ventana
+            self.plotWindow(self.currentWindowIndex)
+
+            # Actualizar estado y botones
+            self.ecgGraphed = True
             # Actualizar estado y botones
             self.ecgGraphed = True
             self.checkFilesAndEnablePlotButton()
@@ -257,12 +261,33 @@ class App(QWidget):
             self.fileLabelDAT.setEnabled(False)
             self.button1.setEnabled(True)
             self.button2.setEnabled(True)
-    
         except Exception as e:
-            print(f"Error al procesar los archivos: {e}")
             self.showErrorAlert(str(e))
 
-            
+    def plotWindow(self, windowIndex):
+        # Obtener la ventana actual
+        window = self.windows[windowIndex]
+
+        # Normalizar la ventana actual
+        window_normalized = ecg_features.min_max_normalize(window)
+
+        # Limpiar el canvas actual y obtener el contexto de dibujo
+        self.canvas.figure.clear()
+        ax = self.canvas.figure.subplots()
+
+        # Dibujar en el canvas
+        ax.plot(window_normalized)
+
+        # Configurar los detalles de la gráfica
+        ax.set_title(f'ECG Window {windowIndex + 1}/{len(self.windows)}')
+        ax.set_xlabel('Muestras')
+        ax.set_ylabel('Amplitud Normalizada')
+
+        # Actualizar el canvas
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
+
+
     # Funciones para la gestión de la interfaz gráfica
     def plot(self, data, start_position, peaks=None):
         self.canvas.figure.clear()
@@ -282,18 +307,38 @@ class App(QWidget):
         ax.set_title('ECG Signal')
         ax.set_xlabel('Samples')
         ax.set_ylabel('Amplitude')
+        ax.set_ylim(0, 1.2) 
+        self.canvas.figure.tight_layout()  # Ajustar el layout del gráfico
         self.canvas.draw()
 
     def advanceSignal(self):
         if self.ECGSeries is not None:
-            self.current_position += self.scroll_amount  # O cualquier otro valor que desees para el avance
-
-            # Verificar que no se haya llegado al final de la señal
-            if self.current_position + self.window_size >= len(self.ECGSeries):
+            # Supongamos que tienes una lista de picos R almacenada en self.peaks
+            if self.current_peak_index < len(self.peaks):
+                peak = self.peaks[self.current_peak_index]
+                window = ecg_features.apply_window(self.ECGSeries, peak, self.record.fs, width=1)
+                if window is not None:
+                    normalized_window = ecg_features.min_max_normalize(window)
+                    self.plot(normalized_window, 0)  # Asumiendo que tu función plot puede manejar la señal normalizada
+                    self.current_peak_index += 1
+            else:
                 self.timer.stop()
-                return
 
-            self.plot(self.ECGSeries, self.current_position)
+    def nextWindow(self):
+        # Incrementar el índice de ventana y mostrar la siguiente ventana
+        if self.currentWindowIndex + 1 < len(self.windows):
+            self.currentWindowIndex += 1
+            self.plotWindow(self.currentWindowIndex)
+            self.beatResult.setText("Tipo de Latido:")
+            self.rhythmResult.setText("Tipo de Ritmo:")
+
+    def prevWindow(self):
+        # Decrementar el índice de ventana y mostrar la ventana anterior
+        if self.currentWindowIndex - 1 >= 0:
+            self.currentWindowIndex -= 1
+            self.plotWindow(self.currentWindowIndex)
+            self.beatResult.setText("Tipo de Latido:")
+            self.rhythmResult.setText("Tipo de Ritmo:")
 
     # Funciones para mostrar alertas y mensajes
     def showErrorAlert(self, errorMessage):
@@ -369,5 +414,15 @@ class App(QWidget):
             self.showMissingFileAlert()
 
     def startDiagnosis(self):
-        if self.ECGSeries is not None:
-            self.timer.start(self.update_interval)
+        if self.currentWindowIndex < len(self.windows):
+            current_window = self.windows[self.currentWindowIndex]
+
+            features = ecg_features.extract_features_from_window(current_window, 360)
+            predictionB, predictionR = ecg_features.predict_ecg(features)
+
+            self.updateDiagnosisUI(predictionB,predictionR)
+
+    def updateDiagnosisUI(self, predictionB, predictionR):
+        # Actualizar los QLabel con las etiquetas de texto
+        self.beatResult.setText(f"Tipo de Latido: {predictionB}")
+        self.rhythmResult.setText(f"Tipo de Ritmo: {predictionR}")
