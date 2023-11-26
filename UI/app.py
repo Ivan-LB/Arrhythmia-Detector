@@ -33,11 +33,8 @@ class App(QWidget):
         self.datFilePath = None
         self.update_interval = 50
         self.scroll_amount = 10
+        self.currentWindowIndex = -1 
         #self.initTimer()
-        
-    # def initTimer(self):
-    #     self.timer = QTimer(self)
-    #     self.timer.timeout.connect(self.advanceSignal)
     
     def initUI(self):
         layout = QVBoxLayout()
@@ -245,14 +242,15 @@ class App(QWidget):
             # Detectar los picos R
             peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * record.fs))
 
-            # Iniciar el índice de ventana actual
-            self.currentWindowIndex = 0
+            # Almacenar las ventanas y los picos
             self.windows = [ecg_features.apply_window(signal_filtered, peak, record.fs) for peak in peaks]
-            # Graficar la primera ventana
-            self.plotWindow(self.currentWindowIndex)
+            self.peaks = peaks
+            self.signal_filtered = signal_filtered
+
+            # Graficar toda la señal con el límite de eje X especificado
+            self.plotFullECG()
 
             # Actualizar estado y botones
-            self.ecgGraphed = True
             self.checkFilesAndEnablePlotButton()
             self.plotButton.setEnabled(False)
             self.fileLabelHEA.setEnabled(False)
@@ -260,6 +258,23 @@ class App(QWidget):
             self.button2.setEnabled(True)
         except Exception as e:
             self.showErrorAlert(str(e))
+
+    def plotFullECG(self):
+        # Limpiar el canvas actual y obtener el contexto de dibujo
+        self.canvas.figure.clear()
+        ax = self.canvas.figure.subplots()
+
+        # Dibujar en el canvas la señal completa con límite de eje X
+        ax.plot(self.signal_filtered[:1200])
+
+        # Configurar los detalles de la gráfica
+        ax.set_title('Full ECG Signal')
+        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_ylabel('Amplitude')
+
+        # Actualizar el canvas
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
 
     def plotWindow(self, windowIndex):
         # Obtener la ventana actual
@@ -310,13 +325,22 @@ class App(QWidget):
         self.canvas.draw()
 
     def nextWindow(self):
-        # Incrementar el índice de ventana y mostrar la siguiente ventana
+        # Incrementar el índice de ventana y mostrar la siguiente ventana, solo si hay más ventanas disponibles
         if self.currentWindowIndex + 1 < len(self.windows):
             self.currentWindowIndex += 1
             self.plotWindow(self.currentWindowIndex)
+            
+            # Actualizar etiquetas de diagnóstico
             self.beatResult.setText("Beat Detected:")
             self.rhythmResult.setText("Rythm Diagnosed:")
-            self.button1.setEnabled(True)
+
+            # Habilitar botón "Anterior" si no estamos en la primera ventana
+            self.button1.setEnabled(self.currentWindowIndex > 0)
+
+        # Habilitar botón "Diagnóstico" si la señal ECG ha sido graficada
+        if not self.ecgGraphed:
+            self.ecgGraphed = True
+            self.diagnoseButton.setEnabled(True)
 
     def prevWindow(self):
         # Decrementar el índice de ventana y mostrar la ventana anterior
@@ -382,6 +406,7 @@ class App(QWidget):
 
         # Opcional: Detener cualquier proceso en ejecución relacionado con los archivos
         self.current_position = 0
+        self.currentWindowIndex = 0 
         self.ECGSeries = None
 
     def dropEvent(self, event):

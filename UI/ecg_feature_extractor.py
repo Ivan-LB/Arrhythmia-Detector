@@ -166,8 +166,8 @@ def predict_ecg(features):
     features_scaled = scaler.transform(df)
 
     # Hacer predicciones
-    predictionsBeats = modelBeat.predict(features_scaled)
-    predictionsRhythm = modelRhythm.predict(features_scaled)
+    predictionsBeats = modelBeat.predict(features_scaled, verbose=0)
+    predictionsRhythm = modelRhythm.predict(features_scaled, verbose=0)
     
     # Convertir las predicciones a etiquetas legibles (opcional)
     beat_label = np.argmax(predictionsBeats, axis=1)
