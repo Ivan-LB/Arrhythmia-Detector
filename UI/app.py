@@ -253,13 +253,10 @@ class App(QWidget):
 
             # Actualizar estado y botones
             self.ecgGraphed = True
-            # Actualizar estado y botones
-            self.ecgGraphed = True
             self.checkFilesAndEnablePlotButton()
             self.plotButton.setEnabled(False)
             self.fileLabelHEA.setEnabled(False)
             self.fileLabelDAT.setEnabled(False)
-            self.button1.setEnabled(True)
             self.button2.setEnabled(True)
         except Exception as e:
             self.showErrorAlert(str(e))
@@ -312,19 +309,6 @@ class App(QWidget):
         self.canvas.figure.tight_layout()  # Ajustar el layout del gráfico
         self.canvas.draw()
 
-    # def advanceSignal(self):
-    #     if self.ECGSeries is not None:
-    #         # Supongamos que tienes una lista de picos R almacenada en self.peaks
-    #         if self.current_peak_index < len(self.peaks):
-    #             peak = self.peaks[self.current_peak_index]
-    #             window = ecg_features.apply_window(self.ECGSeries, peak, self.record.fs, width=1)
-    #             if window is not None:
-    #                 normalized_window = ecg_features.min_max_normalize(window)
-    #                 self.plot(normalized_window, 0)  # Asumiendo que tu función plot puede manejar la señal normalizada
-    #                 self.current_peak_index += 1
-    #         else:
-    #             self.timer.stop()
-
     def nextWindow(self):
         # Incrementar el índice de ventana y mostrar la siguiente ventana
         if self.currentWindowIndex + 1 < len(self.windows):
@@ -332,6 +316,7 @@ class App(QWidget):
             self.plotWindow(self.currentWindowIndex)
             self.beatResult.setText("Beat Detected:")
             self.rhythmResult.setText("Rythm Diagnosed:")
+            self.button1.setEnabled(True)
 
     def prevWindow(self):
         # Decrementar el índice de ventana y mostrar la ventana anterior
@@ -396,7 +381,6 @@ class App(QWidget):
         self.canvas.draw()
 
         # Opcional: Detener cualquier proceso en ejecución relacionado con los archivos
-        #self.timer.stop()
         self.current_position = 0
         self.ECGSeries = None
 
@@ -424,6 +408,5 @@ class App(QWidget):
             self.updateDiagnosisUI(predictionB,predictionR)
 
     def updateDiagnosisUI(self, predictionB, predictionR):
-        # Actualizar los QLabel con las etiquetas de texto
         self.beatResult.setText(f"Beat Detected: {predictionB}")
         self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}")
