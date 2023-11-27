@@ -18,7 +18,7 @@ import pywt
 # Windows
 DATASET_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\mit-bih-arrhythmia-database-1.0.0\\Dataset\\Entrenamiento'
 #MODEL_SAVE_DIRECTORY = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code'
-CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Data\\ecg_features_beats.csv'
+CSV_FILE_PATH = 'C:\\Users\\XPG\\Desktop\\Sotelo\\ProyectoFinal\\Source Code\\ecg_features3.csv'
 # Mac
 #DATASET_DIRECTORY = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/Proyecto Final/Dataset50'
 #CSV_FILE_PATH = '/Users/ivanlorenzanabelli/Desktop/Diagnostico Asistido/ProyectoPrueba/ecg_features1.csv'
@@ -165,17 +165,17 @@ def main():
     
     annotation_mapping = {
         # Beats Normales y Bloqueos de Rama
-        "N": 0, "L": 1, "R": 2, "e": 3, "j": 4,
+        "N": 0, "R": 2,#"L": 1,  "e": 3, "j": 4,
         # Beats Atriales
-        "A": 5, "a": 6, "S": 7,
+        "A": 5, #"a": 6, "S": 7,
         # Beats Nodales
-        "J": 8, 
+        #"J": 8, 
         # Beats Ventriculares
-        "V": 9, "E": 10, "F": 11, "!": 12,
+        "V": 9 #,"E": 10, "F": 11, #"!": 12,
         # Beats Marcados (Paced)
-        "/": 13, "f": 14,
+        #"/": 13, "f": 14
         # Beats No Clasificables y Artefactos
-        "x": 15, "Q": 16, "|": 17
+        #"x": 15, "Q": 16, "|": 17
     }
 
 
@@ -183,9 +183,9 @@ def main():
     # "(SBR": "Sinus bradycardia", 1
     # "(VT": "Ventricular tachycardia", 3
     
-    #rhythm_annotation_mapping = {
-    #    "(N": 0, "(SBR": 1, "(VT": 2
-    #}
+    rhythm_annotation_mapping = {
+        "(N": 0, "(SBR": 1, "(VT": 2
+    }
     
     # Procesar cada registro
     for record_name in record_names:
@@ -203,15 +203,15 @@ def main():
         current_rhythm_label = 'Unknown'
         
         # Iterate over all annotations
-        # for ann_index, ann_sample in enumerate(rhythm_annotations.sample):
-        #     ann_label = rhythm_annotations.aux_note[ann_index].rstrip('\x00')
-        #     if ann_label == '':
-        #         pass
-        #    # elif ann_label in rhythm_annotation_mapping:
-        #    #     current_rhythm_label = rhythm_annotation_mapping[ann_label]
-        #     else:
-        #         current_rhythm_label = "Unknown"
-        #     rhythm_labels.append(current_rhythm_label)
+        for ann_index, ann_sample in enumerate(rhythm_annotations.sample):
+            ann_label = rhythm_annotations.aux_note[ann_index].rstrip('\x00')
+            if ann_label == '':
+                pass
+            elif ann_label in rhythm_annotation_mapping:
+                current_rhythm_label = rhythm_annotation_mapping[ann_label]
+            else:
+                current_rhythm_label = "Unknown"
+            rhythm_labels.append(current_rhythm_label)
 
         if ml_ii_index is not None:
             signal = record.p_signal[:, ml_ii_index]
@@ -230,7 +230,7 @@ def main():
     
         # Find closest annotations to R peaks
         closest_annotations = [annotation_mapping.get(annotation.symbol[np.argmin(np.abs(annotation.sample / fs - pt))], "Unknown") for pt in peak_times]
-        #closest_rhythm_labels = [rhythm_labels[np.argmin(np.abs(rhythm_annotations.sample / fs - pt))] for pt in peak_times]
+        closest_rhythm_labels = [rhythm_labels[np.argmin(np.abs(rhythm_annotations.sample / fs - pt))] for pt in peak_times]
     
         width = 1  # Window width in seconds
         print(len(peaks))
@@ -245,7 +245,7 @@ def main():
                 peaksW = peaksW[signal_windowed_normalized[peaksW] > 0.6]
                 std_val = np.std(signal_windowed_normalized)
                 
-                #rhythm_label = closest_rhythm_labels[i]
+                rhythm_label = closest_rhythm_labels[i]
                 annotation_label = closest_annotations[i] if i < len(closest_annotations) else "Unknown"
                 
                 #plt.figure(figsize=(8, 3))
@@ -272,8 +272,8 @@ def main():
                     "WaveletEnergy": wavelet_Energy,
                     "ShannonEntropy": total_shannon_entropy,
                     "SignalSTD": std_val,
-                    "BeatType": annotation_label
-                    #"RhythmClass": rhythm_label
+                    "BeatType": annotation_label,
+                    "RhythmClass": rhythm_label
                 }
                 create_dataframe(features)
 
