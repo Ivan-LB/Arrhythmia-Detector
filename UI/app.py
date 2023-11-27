@@ -130,7 +130,6 @@ class App(QWidget):
         # Agregar el layout horizontal al widget principal
         layout.addWidget(self.diagnosisSpace)
 
-        
         # Crear un QHBoxLayout para los botones
         buttonLayout = QHBoxLayout()
     
@@ -264,12 +263,15 @@ class App(QWidget):
         self.canvas.figure.clear()
         ax = self.canvas.figure.subplots()
 
+        # Convertir las muestras a tiempo (segundos)
+        time_axis = np.arange(len(self.signal_filtered)) / 360
+
         # Dibujar en el canvas la señal completa con límite de eje X
-        ax.plot(self.signal_filtered[:1200])
+        ax.plot(time_axis[:1500], self.signal_filtered[:1500])
 
         # Configurar los detalles de la gráfica
         ax.set_title('Full ECG Signal')
-        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_xlabel('Time (seconds)')
         ax.set_ylabel('Amplitude')
 
         # Actualizar el canvas
@@ -280,6 +282,13 @@ class App(QWidget):
         # Obtener la ventana actual
         window = self.windows[windowIndex]
 
+        # Obtener la posición del pico correspondiente a esta ventana en la señal completa
+        peak_position = self.peaks[windowIndex]
+
+        # Calcular las posiciones de inicio y fin de la ventana en la señal completa
+        window_start = peak_position - int(0.6 * 360)  # ajustar según cómo definiste tus ventanas
+        window_end = window_start + len(window)
+
         # Normalizar la ventana actual
         window_normalized = ecg_features.min_max_normalize(window)
 
@@ -287,42 +296,45 @@ class App(QWidget):
         self.canvas.figure.clear()
         ax = self.canvas.figure.subplots()
 
+        # Convertir las muestras a tiempo (segundos)
+        time_axis = np.arange(window_start, window_end) / 360
+
         # Dibujar en el canvas
-        ax.plot(window_normalized)
+        ax.plot(time_axis, window_normalized)
 
         # Configurar los detalles de la gráfica
         ax.set_title(f'ECG Window {windowIndex + 1}/{len(self.windows)}')
-        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_xlabel('Time (seconds)')
         ax.set_ylabel('Amplitude')
 
         # Actualizar el canvas
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 
-
     # Funciones para la gestión de la interfaz gráfica
     def plot(self, data, start_position, peaks=None):
         self.canvas.figure.clear()
         ax = self.canvas.figure.subplots()
-    
+        
         # Asegurarse de que no se exceda el final de la serie de datos
         end_position = min(start_position + self.window_size, len(data))
         segment = data[start_position:end_position]
-    
-        ax.plot(range(start_position, end_position), segment)
-    
+        
+        # Usar el rango real de muestras para el eje x
+        time_axis = np.arange(start_position, end_position)
+        ax.plot(time_axis, segment)
+        
         if peaks is not None:
             # Ajustar picos para el segmento actual
             peaks_in_segment = [p for p in peaks if start_position <= p < end_position]
             ax.plot([p for p in peaks_in_segment], [segment[p - start_position] for p in peaks_in_segment], "x")
-    
+        
         ax.set_title('ECG Signal')
-        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_xlabel('Sample Number')
         ax.set_ylabel('Amplitude')
-        ax.set_ylim(0, 1.2) 
-        ax.set_ylim(0, 1200)
         self.canvas.figure.tight_layout()  # Ajustar el layout del gráfico
         self.canvas.draw()
+
 
     def nextWindow(self):
         # Incrementar el índice de ventana y mostrar la siguiente ventana, solo si hay más ventanas disponibles
@@ -349,6 +361,8 @@ class App(QWidget):
             self.plotWindow(self.currentWindowIndex)
             self.beatResult.setText("Beat Detected:")
             self.rhythmResult.setText("Rythm Diagnosed:")
+        # Deshabilitar botón "Anterior" si estamos en la primera ventana
+        self.button1.setEnabled(self.currentWindowIndex > 0)
 
     # Funciones para mostrar alertas y mensajes
     def showErrorAlert(self, errorMessage):
@@ -387,6 +401,8 @@ class App(QWidget):
         # Actualizar las etiquetas de los archivos a su estado original
         self.fileLabelHEA.setText("Drag and drop or click to upload .hea file")
         self.fileLabelDAT.setText("Drag and drop or click to upload .dat file")
+        self.beatResult.setText("Beat Detected:")
+        self.rhythmResult.setText("Rythm Diagnosed:")
         
         # Volver a habilitar los botones de subida de archivos
         self.fileLabelHEA.setEnabled(True)
