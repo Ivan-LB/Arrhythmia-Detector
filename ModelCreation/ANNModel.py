@@ -1,21 +1,21 @@
-import pandas as pd
+import os
 import joblib
 import numpy as np
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import seaborn as sns
 import itertools
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, classification_report
-import tensorflow as tf
-import seaborn as sns
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import Adam, SGD, Adamax, RMSprop
-from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization
-import matplotlib.pyplot as plt
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.optimizers import SGD, Adamax
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.regularizers import l2, l1
+from tensorflow.keras.regularizers import l1, l2
 from imblearn.over_sampling import SMOTE
-from sklearn.utils import class_weight
 
 # Cargar datos
 ruta_csv = 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Data\\ecg_features3.csv'  # Reemplaza con la ruta a tu archivo CSV
@@ -34,24 +34,17 @@ scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
+# Aplicar SMOTE
 smote = SMOTE()
 X_train_smote_beat, y_train_beat_smote = smote.fit_resample(X_train, y_train_beat.argmax(axis=1))
 y_train_beat_smote = to_categorical(y_train_beat_smote)
 X_train_smote_rhythm, y_train_rhythm_smote = smote.fit_resample(X_train, y_train_rhythm.argmax(axis=1))
 y_train_rhythm_smote = to_categorical(y_train_rhythm_smote)
 
-# Configurar EarlyStopping
+# Callbacks
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
 
-# model_beat = Sequential([
-#     Dense(64, input_shape=(X_train.shape[1],), activation='relu', kernel_regularizer=l2(0.0005)),
-#     Dropout(0.3),
-#     Dense(128, activation='relu', kernel_regularizer=l2(0.0001)),
-#     Dropout(0.3),
-#     Dense(64, activation='relu', kernel_regularizer=l2(0.0001)),
-#     Dense(y_train_beat.shape[1], activation='softmax')
-# ])
 model_beat = Sequential([
     Dense(64, input_shape=(X_train.shape[1],), activation='relu', kernel_regularizer=l1(0.0005)),
     BatchNormalization(),
@@ -67,13 +60,6 @@ optimizer_sgd_beat = SGD(learning_rate=0.05, momentum=0.9)
 model_beat.compile(optimizer=optimizer_sgd_beat, 
                    loss='categorical_crossentropy', 
                    metrics=['accuracy'])
-# optimizer_adamax_beat = Adamax(learning_rate=0.005)
-# model_beat.compile(optimizer=optimizer_adamax_beat, 
-#                    loss='categorical_crossentropy', 
-#                    metrics=['accuracy'])
-# model_beat.compile(optimizer='rmsprop', 
-#                    loss='categorical_crossentropy',
-#                    metrics=['accuracy'])
 
 # Entrenar el modelo para el tipo de latido con los datos balanceados
 history_beat = model_beat.fit(X_train_smote_beat, y_train_beat_smote, 
@@ -84,15 +70,6 @@ model_beat.summary()
 model_beat.get_weights()
 model_beat.optimizer
 
-# Modelo para clasificar la clase de ritmo
-# model_rhythm = Sequential([
-#     Dense(64, input_shape=(X_train.shape[1],), activation='relu', kernel_regularizer=l1(0.0005)),
-#     Dropout(0.4),
-#     Dense(128, activation='relu', kernel_regularizer=l2(0.0005)),
-#     Dropout(0.3),
-#     Dense(64, activation='relu', kernel_regularizer=l2(0.0001)),
-#     Dense(y_train_rhythm.shape[1], activation='softmax')
-# ])
 model_rhythm = Sequential([
     Dense(64, input_shape=(X_train.shape[1],), activation='relu', kernel_regularizer=l1(0.0005)),
     BatchNormalization(),
@@ -105,9 +82,6 @@ model_rhythm = Sequential([
 ])
 
 # Compilar el modelo para la clase de ritmo
-# model_rhythm.compile(optimizer=Adam(learning_rate=0.005), 
-#                      loss='categorical_crossentropy',
-#                      metrics=['accuracy'])
 optimizer_adamax_beat = Adamax(learning_rate=0.005)
 model_rhythm.compile(optimizer=optimizer_adamax_beat, 
                    loss='categorical_crossentropy', 

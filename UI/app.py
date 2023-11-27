@@ -5,16 +5,18 @@ Created on Sat Nov  4 13:34:17 2023
 
 @author: ivanlorenzanabelli
 """
-import wfdb
 import numpy as np
+import wfdb
+import pywt
+import matplotlib.pyplot as plt
+from scipy.signal import iirnotch, lfilter, find_peaks
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap, QPalette, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from draggableLabel import DraggableLabel
-import matplotlib.pyplot as plt
-from scipy.signal import iirnotch, lfilter, find_peaks
+import ecg_feature_extractor as ecg_features
 
 class App(QWidget):
     def __init__(self):
@@ -31,11 +33,8 @@ class App(QWidget):
         self.datFilePath = None
         self.update_interval = 50
         self.scroll_amount = 10
-        self.initTimer()
-        
-    def initTimer(self):
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.advanceSignal)
+        self.currentWindowIndex = -1 
+        #self.initTimer()
     
     def initUI(self):
         layout = QVBoxLayout()
@@ -51,7 +50,7 @@ class App(QWidget):
         fileLayout = QHBoxLayout()
         
         # Botón de subida para archivo .hea
-        self.fileLabelHEA = DraggableLabel("Arrastra y suelta o haz click para subir archivo .hea")
+        self.fileLabelHEA = DraggableLabel("Drag and drop or click to upload .hea file")
         self.fileLabelHEA.setStyleSheet("border: 2px dashed white; padding: 20px;")
         self.fileLabelHEA.setAcceptDrops(True)
         self.fileLabelHEA.mousePressEvent = self.labelClickedHEA
@@ -60,7 +59,7 @@ class App(QWidget):
         fileLayout.addWidget(self.fileLabelHEA)
         
         # Botón de subida para archivo .dat
-        self.fileLabelDAT = DraggableLabel("Arrastra y suelta o haz click para subir archivo .dat")
+        self.fileLabelDAT = DraggableLabel("Drag and drop or click to upload .dat file")
         self.fileLabelDAT.setStyleSheet("border: 2px dashed white; padding: 20px;")
         self.fileLabelDAT.setAcceptDrops(True)
         self.fileLabelDAT.mousePressEvent = self.labelClickedDAT
@@ -83,9 +82,10 @@ class App(QWidget):
         
         # Layout para los botones
         buttonsLayout = QVBoxLayout()
-        self.button1 = QPushButton("Back")
+        self.button1 = QPushButton("Previous")
         self.button1.setMinimumSize(200, 35)
         self.button1.setMaximumSize(200, 35)
+        self.button1.clicked.connect(self.prevWindow)
         self.button1.setEnabled(False)  # Inicialmente deshabilitado
         self.button1.setGraphicsEffect(shadow)
         self.button1.setStyleSheet(
@@ -93,9 +93,10 @@ class App(QWidget):
             "QPushButton:disabled { background-color: #A04030; color: white; border-radius: 10px; opacity: 0.8;}"
             "QPushButton:hover:enabled { background-color: #FF4500; }"
         )
-        self.button2 = QPushButton("Forward")
+        self.button2 = QPushButton("Next")
         self.button2.setMinimumSize(200, 35)
         self.button2.setMaximumSize(200, 35)
+        self.button2.clicked.connect(self.nextWindow)
         self.button2.setEnabled(False)  # Inicialmente deshabilitado
         self.button2.setGraphicsEffect(shadow)
         self.button2.setStyleSheet(
@@ -109,15 +110,15 @@ class App(QWidget):
         
         # Layout para las etiquetas
         labelsLayout = QVBoxLayout()
-        self.resultsLabel = QLabel("Resultados del Modelo")
-        self.resultsLabel.setStyleSheet("border: none;")
+        self.resultsLabel = QLabel("Diagnosis Results")
+        self.resultsLabel.setStyleSheet("border: none; font-weight: bold;")
         labelsLayout.addWidget(self.resultsLabel)
         
-        self.beatResult = QLabel("Tipo de Latido: ")
+        self.beatResult = QLabel("Beat Detected: ")
         self.beatResult.setStyleSheet("border: none;")
         labelsLayout.addWidget(self.beatResult)
         
-        self.rhythmResult = QLabel("Tipo de Ritmo: ")
+        self.rhythmResult = QLabel("Rythm Diagnosed: ")
         self.rhythmResult.setStyleSheet("border: none;")
         labelsLayout.addWidget(self.rhythmResult)
         
@@ -134,21 +135,21 @@ class App(QWidget):
         buttonLayout = QHBoxLayout()
     
         # Botón para graficar
-        self.plotButton = QPushButton("Graficar")
+        self.plotButton = QPushButton("Plot ECG")
         self.plotButton.clicked.connect(self.plotECG)
         self.plotButton.setEnabled(False)  # Inicialmente deshabilitado
         self.plotButton.setGraphicsEffect(shadow)
         buttonLayout.addWidget(self.plotButton)
         
         # Botón para diagnosticar
-        self.diagnoseButton = QPushButton("Diagnosticar")
+        self.diagnoseButton = QPushButton("Diagnose")
         self.diagnoseButton.clicked.connect(self.startDiagnosis)
         self.diagnoseButton.setEnabled(False)  # Inicialmente deshabilitado
         self.diagnoseButton.setGraphicsEffect(shadow)
         buttonLayout.addWidget(self.diagnoseButton)
         
         # Botón para borrar archivos
-        self.deleteFileButtton = QPushButton("Borrar Archivos")
+        self.deleteFileButtton = QPushButton("Delete Files")
         self.deleteFileButtton.clicked.connect(self.deleteFiles)
         self.deleteFileButtton.setEnabled(False)  # Inicialmente deshabilitado
         self.deleteFileButtton.setGraphicsEffect(shadow)
@@ -165,7 +166,7 @@ class App(QWidget):
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMaximizeButtonHint)
         self.setFixedSize(1100, 600)
         self.setLayout(layout)
-        self.setWindowTitle('Diagnóstico de Arritmia')
+        self.setWindowTitle('ECG Arrhythmia Analyzer')
         self.show()
 
     # Funciones para manejo de archivos y eventos de usuario
@@ -225,7 +226,6 @@ class App(QWidget):
             #self.ECGSeries = ... # Carga la serie ECG desde los archivos
             #self.plot(self.ECGSeries[self.current_position:self.current_position+254], self.current_position)
         except Exception as e:
-            print(f"Error: {e}")
             self.showErrorAlert(str(e))
          
     def plotECG(self):
@@ -233,36 +233,73 @@ class App(QWidget):
             # Cargar la señal ECG
             record = wfdb.rdrecord(self.heaFilePath.replace('.hea', ''))
             signal = record.p_signal[:, 0]
-    
+
             # Procesamiento básico de la señal
             signal_centered = signal - np.mean(signal)
-            signal_normalized = signal_centered / np.max(np.abs(signal_centered))
             b, a = iirnotch(60, 30, record.fs)
-            signal_filtered = lfilter(b, a, signal_normalized)
-    
+            signal_filtered = lfilter(b, a, signal_centered)
+
             # Detectar los picos R
             peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * record.fs))
-    
-            # Almacenar la señal filtrada para visualización
-            self.ECGSeries = signal_filtered
-    
-            # Graficar la señal ECG con picos R
-            self.plot(self.ECGSeries, 0, peaks)
-    
+
+            # Almacenar las ventanas y los picos
+            self.windows = [ecg_features.apply_window(signal_filtered, peak, record.fs) for peak in peaks]
+            self.peaks = peaks
+            self.signal_filtered = signal_filtered
+
+            # Graficar toda la señal con el límite de eje X especificado
+            self.plotFullECG()
+
             # Actualizar estado y botones
-            self.ecgGraphed = True
             self.checkFilesAndEnablePlotButton()
             self.plotButton.setEnabled(False)
             self.fileLabelHEA.setEnabled(False)
             self.fileLabelDAT.setEnabled(False)
-            self.button1.setEnabled(True)
             self.button2.setEnabled(True)
-    
         except Exception as e:
-            print(f"Error al procesar los archivos: {e}")
             self.showErrorAlert(str(e))
 
-            
+    def plotFullECG(self):
+        # Limpiar el canvas actual y obtener el contexto de dibujo
+        self.canvas.figure.clear()
+        ax = self.canvas.figure.subplots()
+
+        # Dibujar en el canvas la señal completa con límite de eje X
+        ax.plot(self.signal_filtered[:1200])
+
+        # Configurar los detalles de la gráfica
+        ax.set_title('Full ECG Signal')
+        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_ylabel('Amplitude')
+
+        # Actualizar el canvas
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
+
+    def plotWindow(self, windowIndex):
+        # Obtener la ventana actual
+        window = self.windows[windowIndex]
+
+        # Normalizar la ventana actual
+        window_normalized = ecg_features.min_max_normalize(window)
+
+        # Limpiar el canvas actual y obtener el contexto de dibujo
+        self.canvas.figure.clear()
+        ax = self.canvas.figure.subplots()
+
+        # Dibujar en el canvas
+        ax.plot(window_normalized)
+
+        # Configurar los detalles de la gráfica
+        ax.set_title(f'ECG Window {windowIndex + 1}/{len(self.windows)}')
+        ax.set_xlabel('Samples (360 samples = 1 second)')
+        ax.set_ylabel('Amplitude')
+
+        # Actualizar el canvas
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
+
+
     # Funciones para la gestión de la interfaz gráfica
     def plot(self, data, start_position, peaks=None):
         self.canvas.figure.clear()
@@ -280,20 +317,38 @@ class App(QWidget):
             ax.plot([p for p in peaks_in_segment], [segment[p - start_position] for p in peaks_in_segment], "x")
     
         ax.set_title('ECG Signal')
-        ax.set_xlabel('Samples')
+        ax.set_xlabel('Samples (360 samples = 1 second)')
         ax.set_ylabel('Amplitude')
+        ax.set_ylim(0, 1.2) 
+        ax.set_ylim(0, 1200)
+        self.canvas.figure.tight_layout()  # Ajustar el layout del gráfico
         self.canvas.draw()
 
-    def advanceSignal(self):
-        if self.ECGSeries is not None:
-            self.current_position += self.scroll_amount  # O cualquier otro valor que desees para el avance
+    def nextWindow(self):
+        # Incrementar el índice de ventana y mostrar la siguiente ventana, solo si hay más ventanas disponibles
+        if self.currentWindowIndex + 1 < len(self.windows):
+            self.currentWindowIndex += 1
+            self.plotWindow(self.currentWindowIndex)
+            
+            # Actualizar etiquetas de diagnóstico
+            self.beatResult.setText("Beat Detected:")
+            self.rhythmResult.setText("Rythm Diagnosed:")
 
-            # Verificar que no se haya llegado al final de la señal
-            if self.current_position + self.window_size >= len(self.ECGSeries):
-                self.timer.stop()
-                return
+            # Habilitar botón "Anterior" si no estamos en la primera ventana
+            self.button1.setEnabled(self.currentWindowIndex > 0)
 
-            self.plot(self.ECGSeries, self.current_position)
+        # Habilitar botón "Diagnóstico" si la señal ECG ha sido graficada
+        if not self.ecgGraphed:
+            self.ecgGraphed = True
+            self.diagnoseButton.setEnabled(True)
+
+    def prevWindow(self):
+        # Decrementar el índice de ventana y mostrar la ventana anterior
+        if self.currentWindowIndex - 1 >= 0:
+            self.currentWindowIndex -= 1
+            self.plotWindow(self.currentWindowIndex)
+            self.beatResult.setText("Beat Detected:")
+            self.rhythmResult.setText("Rythm Diagnosed:")
 
     # Funciones para mostrar alertas y mensajes
     def showErrorAlert(self, errorMessage):
@@ -330,8 +385,8 @@ class App(QWidget):
         self.datFilePath = None
 
         # Actualizar las etiquetas de los archivos a su estado original
-        self.fileLabelHEA.setText("Arrastra y suelta o haz click para subir archivo .hea")
-        self.fileLabelDAT.setText("Arrastra y suelta o haz click para subir archivo .dat")
+        self.fileLabelHEA.setText("Drag and drop or click to upload .hea file")
+        self.fileLabelDAT.setText("Drag and drop or click to upload .dat file")
         
         # Volver a habilitar los botones de subida de archivos
         self.fileLabelHEA.setEnabled(True)
@@ -350,8 +405,8 @@ class App(QWidget):
         self.canvas.draw()
 
         # Opcional: Detener cualquier proceso en ejecución relacionado con los archivos
-        self.timer.stop()
         self.current_position = 0
+        self.currentWindowIndex = 0 
         self.ECGSeries = None
 
     def dropEvent(self, event):
@@ -369,5 +424,14 @@ class App(QWidget):
             self.showMissingFileAlert()
 
     def startDiagnosis(self):
-        if self.ECGSeries is not None:
-            self.timer.start(self.update_interval)
+        if self.currentWindowIndex < len(self.windows):
+            current_window = self.windows[self.currentWindowIndex]
+
+            features = ecg_features.extract_features_from_window(current_window, 360)
+            predictionB, predictionR = ecg_features.predict_ecg(features)
+
+            self.updateDiagnosisUI(predictionB,predictionR)
+
+    def updateDiagnosisUI(self, predictionB, predictionR):
+        self.beatResult.setText(f"Beat Detected: {predictionB}")
+        self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}")
