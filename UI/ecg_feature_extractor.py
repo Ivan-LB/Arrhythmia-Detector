@@ -191,14 +191,14 @@ def get_beat_label(prediction):
     """
     pred_value = prediction[0]
     annotation_mapping = {
-        0: "Normal",
+        0: "N: Normal",
         "L": "Left bundle branch block beat",
-        2: "Right bundle branch block beat",
-        5: "Atrial premature beat",
+        1: "R: Right bundle branch block beat",
+        2: "A: Atrial premature beat",
         "a": "Aberrated atrial premature beat",
         "J": "Nodal (junctional) premature beat",
         "S": "Supraventricular premature beat",
-        9: "Premature ventricular contraction",
+        3: "V: Premature ventricular contraction",
         "F": "Fusion of ventricular and normal beat",
         "[": "Start of ventricular flutter/fibrillation",
         "!": "Ventricular flutter wave",

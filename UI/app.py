@@ -13,7 +13,7 @@ from scipy.signal import iirnotch, lfilter, find_peaks
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap, QPalette, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QGraphicsDropShadowEffect, QLineEdit
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from draggableLabel import DraggableLabel
 import ecg_feature_extractor as ecg_features
@@ -36,6 +36,7 @@ class App(QWidget):
         self.currentWindowIndex = -1 
         #self.initTimer()
     
+    
     def initUI(self):
         layout = QVBoxLayout()
         
@@ -53,7 +54,7 @@ class App(QWidget):
         self.fileLabelHEA = DraggableLabel("Drag and drop or click to upload .hea file")
         self.fileLabelHEA.setStyleSheet("border: 2px dashed white; padding: 20px; border-radius: 10px;")
         self.fileLabelHEA.setAcceptDrops(True)
-        self.fileLabelHEA.mousePressEvent = self.labelClickedHEA
+        self.fileLabelHEA.mousePressEvent = lambda _: self.labelClicked("hea")
         self.fileLabelHEA.setMinimumSize(525, 75)  # Ancho mínimo, Alto mínimo
         self.fileLabelHEA.setMaximumSize(525, 75)  # Ancho máximo, Alto máximo
         fileLayout.addWidget(self.fileLabelHEA)
@@ -62,9 +63,10 @@ class App(QWidget):
         self.fileLabelDAT = DraggableLabel("Drag and drop or click to upload .dat file")
         self.fileLabelDAT.setStyleSheet("border: 2px dashed white; padding: 20px; border-radius: 10px;")
         self.fileLabelDAT.setAcceptDrops(True)
-        self.fileLabelDAT.mousePressEvent = self.labelClickedDAT
+        self.fileLabelDAT.mousePressEvent = lambda _: self.labelClicked("dat") 
         self.fileLabelDAT.setMinimumSize(525, 75)  # Ancho mínimo, Alto mínimo
         self.fileLabelDAT.setMaximumSize(525, 75)  # Ancho máximo, Alto máximo
+        
         fileLayout.addWidget(self.fileLabelDAT)
         
         # Agregar el QHBoxLayout al layout principal
@@ -93,22 +95,13 @@ class App(QWidget):
         self.button1.setMaximumSize(200, 35)
         self.button1.clicked.connect(self.prevWindow)
         self.button1.setEnabled(False)  # Inicialmente deshabilitado
-        self.button1.setStyleSheet(
-            "QPushButton:enabled { background-color: #FF6347; color: white; border-radius: 10px; }"
-            "QPushButton:disabled { background-color: #A04030; color: white; border-radius: 10px; opacity: 0.8;}"
-            "QPushButton:hover:enabled { background-color: #FF4500; }"
-        )
+
         self.button2 = QPushButton("Next")
         self.button2.setMinimumSize(200, 35)
         self.button2.setMaximumSize(200, 35)
         self.button2.clicked.connect(self.nextWindow)
         self.button2.setEnabled(False)  # Inicialmente deshabilitado
-        self.button2.setStyleSheet(
-            "QPushButton:enabled { background-color: #32CD32; color: white; border-radius: 10px; }"
-            "QPushButton:disabled { background-color: #206820; color: white; border-radius: 10px; opacity: 0.8;}"
-            "QPushButton:hover:enabled { background-color: #228B22; }"
-        )
-        self.button2.setGraphicsEffect(shadow)
+        
         buttonsLayout.addWidget(self.button1)
         buttonsLayout.addWidget(self.button2)
         
@@ -125,10 +118,39 @@ class App(QWidget):
         self.rhythmResult = QLabel("Rythm Diagnosed: ")
         self.rhythmResult.setStyleSheet("border: none;")
         labelsLayout.addWidget(self.rhythmResult)
-        
+
+        # Barra de búsqueda
+        self.searchField = QLineEdit()
+        self.searchField.setPlaceholderText("Search by Window number...")
+        self.searchField.setStyleSheet(" QLineEdit:enabled { background-color: #FFFFFF; color: black; border: 1px solid #C0C0C0; border-radius: 5px; padding: 5px; }"
+            " QLineEdit:disabled { background-color: #F0F0F0; color: gray; border: 1px solid #D3D3D3; border-radius: 5px; padding: 5px; }"
+        )
+        self.searchField.setEnabled(False)
+        self.searchField.setMaximumSize(275, 35)
+
+        # Botón de búsqueda
+        self.searchButton = QPushButton("Search")
+        self.searchButton.setStyleSheet("QPushButton:enabled { background-color: #1E90FF; color: white; border-radius: 10px; padding: 5px; }"
+            "QPushButton:disabled { background-color: #1E60A0; color: gray; opacity: 0.8; }"
+            "QPushButton:hover { background-color: #00BFFF; }"
+        )
+        self.searchButton.setEnabled(False)
+        self.searchButton.clicked.connect(self.performSearch)
+        self.searchButton.setMaximumSize(80, 35)  # Ajustar tamaño
+
+        # Layout para la barra de búsqueda y el botón
+        searchBarLayout = QHBoxLayout()
+        searchBarLayout.addWidget(self.searchField)
+        searchBarLayout.addWidget(self.searchButton)
+
+        # Layout principal para la sección de búsqueda
+        searchSectionLayout = QVBoxLayout()
+        searchSectionLayout.addLayout(searchBarLayout)
+
         # Layout horizontal que contiene los dos QVBoxLayouts
         diagnosisLayout = QHBoxLayout(self.diagnosisSpace)
         diagnosisLayout.addLayout(labelsLayout)
+        diagnosisLayout.insertLayout(1, searchSectionLayout)
         diagnosisLayout.addLayout(buttonsLayout)
         
         # Agregar el layout horizontal al widget principal
@@ -166,6 +188,9 @@ class App(QWidget):
         palette.setBrush(QPalette.Background, QBrush(pixmap))
         self.setPalette(palette)
 
+        self.applyButtonStyle(self.button1, "#FF6347", "#FF4500", "#A04030")
+        self.applyButtonStyle(self.button2, "#32CD32", "#228B22", "#206820")
+
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMaximizeButtonHint)
         self.setFixedSize(1100, 600)
         self.setLayout(layout)
@@ -173,6 +198,19 @@ class App(QWidget):
         self.show()
 
     # Funciones para manejo de archivos y eventos de usuario
+    def labelClicked(self, fileType):
+        options = QFileDialog.Options()
+        fileExtension = "HEA Files (*.hea)" if fileType == "hea" else "DAT Files (*.dat)"
+        fileName, _ = QFileDialog.getOpenFileName(self, f"Select {fileType.upper()} file", "", fileExtension, options=options)
+        if fileName:
+            if fileType == "hea":
+                self.fileLabelHEA.setText(fileName)
+                self.heaFilePath = fileName
+            else:
+                self.fileLabelDAT.setText(fileName)
+                self.datFilePath = fileName
+            self.checkFilesAndEnablePlotButton()
+
     def uploadFile(self, fileType):
         options = QFileDialog.Options()
         if fileType == "hea":
@@ -328,6 +366,15 @@ class App(QWidget):
         self.canvas.draw()
 
     # Funciones para la gestión de la interfaz gráfica
+    def applyButtonStyle(self, button, color, hoverColor, disabledColor):
+        button.setStyleSheet(
+            f"""
+            QPushButton:enabled {{ background-color: {color}; color: white; border-radius: 10px; }}
+            QPushButton:disabled {{ background-color: {disabledColor}; color: white; border-radius: 10px; opacity: 0.8;}}
+            QPushButton:hover:enabled {{ background-color: {hoverColor}; }}
+            """
+        )
+
     def plot(self, data, start_position, peaks=None):
         self.canvas.figure.clear()
         ax = self.canvas.figure.subplots()
@@ -377,6 +424,8 @@ class App(QWidget):
         # Habilitar botón "Diagnóstico" si la señal ECG ha sido graficada
         if not self.ecgGraphed:
             self.ecgGraphed = True
+            self.searchField.setEnabled(True)
+            self.searchButton.setEnabled(True)
             self.diagnoseButton.setEnabled(True)
 
     def prevWindow(self):
@@ -435,7 +484,10 @@ class App(QWidget):
 
         # Deshabilitar el botón Graficar, Diagnosticar y Borrar
         self.ecgGraphed = False
+        self.searchField.setText("")
         self.plotButton.setEnabled(False)
+        self.searchField.setEnabled(False)
+        self.searchButton.setEnabled(False)
         self.diagnoseButton.setEnabled(False)
         self.deleteFileButtton.setEnabled(False)
         self.button1.setEnabled(False)
@@ -476,7 +528,25 @@ class App(QWidget):
     def updateDiagnosisUI(self, predictionB, predictionR):
         self.beatResult.setText(f"Beat Detected: {predictionB}")
         self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}")
-# Funciones para procesamiento y visualización de datos
+
+    def performSearch(self):
+        search_query = self.searchField.text()
+        if search_query.isdigit():
+            window_index = int(search_query) - 1  # asumiendo que el usuario ingresa números de ventana basados en 1
+            if 0 <= window_index < len(self.windows):
+                self.currentWindowIndex = window_index  # Actualiza el índice de ventana actual
+                self.plotWindow(window_index)
+                # Habilitar o deshabilitar los botones "Anterior" y "Siguiente" según sea necesario
+                self.button1.setEnabled(window_index > 0)
+                self.button2.setEnabled(window_index < len(self.windows) - 1)
+                self.searchField.setText("")
+            else:
+                QMessageBox.information(self, "Search", "Window number out of range.")
+                self.searchField.setText("")
+        else:
+            QMessageBox.warning(self, "Search Error", "Please enter a valid window number.")
+            self.searchField.setText("")
+
 def seconds_to_min_sec(seconds):
     if seconds < 60:
         return f"{seconds:.2f}s"  # Solo muestra segundos con dos decimales si es menor a 60
