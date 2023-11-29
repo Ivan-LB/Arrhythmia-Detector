@@ -8,9 +8,9 @@ import tensorflow as tf
 from scipy.signal import iirnotch, lfilter, find_peaks
 
 # Constantes
-MODEL_RHYTHM_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_rhythm.h5'
-MODEL_BEAT_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_beat.h5'
-SCALER_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/scaler_ecg.pk1'
+MODEL_RHYTHM_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_rhythmV2.h5'
+MODEL_BEAT_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_beatV2.h5'
+SCALER_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/scaler_ecgV2.pk1'
 
 # Function definitions
 def get_ml_ii_index(header_lines):

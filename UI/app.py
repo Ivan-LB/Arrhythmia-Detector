@@ -51,7 +51,7 @@ class App(QWidget):
         
         # Botón de subida para archivo .hea
         self.fileLabelHEA = DraggableLabel("Drag and drop or click to upload .hea file")
-        self.fileLabelHEA.setStyleSheet("border: 2px dashed white; padding: 20px;")
+        self.fileLabelHEA.setStyleSheet("border: 2px dashed white; padding: 20px; border-radius: 10px;")
         self.fileLabelHEA.setAcceptDrops(True)
         self.fileLabelHEA.mousePressEvent = self.labelClickedHEA
         self.fileLabelHEA.setMinimumSize(525, 75)  # Ancho mínimo, Alto mínimo
@@ -60,7 +60,7 @@ class App(QWidget):
         
         # Botón de subida para archivo .dat
         self.fileLabelDAT = DraggableLabel("Drag and drop or click to upload .dat file")
-        self.fileLabelDAT.setStyleSheet("border: 2px dashed white; padding: 20px;")
+        self.fileLabelDAT.setStyleSheet("border: 2px dashed white; padding: 20px; border-radius: 10px;")
         self.fileLabelDAT.setAcceptDrops(True)
         self.fileLabelDAT.mousePressEvent = self.labelClickedDAT
         self.fileLabelDAT.setMinimumSize(525, 75)  # Ancho mínimo, Alto mínimo
@@ -70,15 +70,21 @@ class App(QWidget):
         # Agregar el QHBoxLayout al layout principal
         layout.addLayout(fileLayout)
 
+        # Contenedor para el canvas
+        self.canvasContainer = QWidget()
+        self.canvasContainer.setStyleSheet("background-color: white; border-radius: 10px;")
+        self.canvasContainer.setGraphicsEffect(shadow)
+
+        canvasLayout = QVBoxLayout(self.canvasContainer)
+        canvasLayout.setContentsMargins(5, 5, 5, 5)  # Ajustar márgenes si es necesario
         # Canvas para graficar la señal
         self.canvas = FigureCanvas(plt.Figure(figsize=(5, 3)))
-        self.canvas.setGraphicsEffect(shadow)
-        layout.addWidget(self.canvas,3)
+        canvasLayout.addWidget(self.canvas)
+        layout.addWidget(self.canvasContainer, 3)
         
         # Espacio para el diagnóstico
         self.diagnosisSpace = QWidget()
-        self.diagnosisSpace.setStyleSheet("border: 1px solid gray; height: 150px;")
-        self.diagnosisSpace.setStyleSheet("background-color: white;")
+        self.diagnosisSpace.setStyleSheet("background-color: white; border: 1px solid gray; height: 150px; border-radius: 10px;")
         
         # Layout para los botones
         buttonsLayout = QVBoxLayout()
@@ -87,7 +93,6 @@ class App(QWidget):
         self.button1.setMaximumSize(200, 35)
         self.button1.clicked.connect(self.prevWindow)
         self.button1.setEnabled(False)  # Inicialmente deshabilitado
-        self.button1.setGraphicsEffect(shadow)
         self.button1.setStyleSheet(
             "QPushButton:enabled { background-color: #FF6347; color: white; border-radius: 10px; }"
             "QPushButton:disabled { background-color: #A04030; color: white; border-radius: 10px; opacity: 0.8;}"
@@ -98,7 +103,6 @@ class App(QWidget):
         self.button2.setMaximumSize(200, 35)
         self.button2.clicked.connect(self.nextWindow)
         self.button2.setEnabled(False)  # Inicialmente deshabilitado
-        self.button2.setGraphicsEffect(shadow)
         self.button2.setStyleSheet(
             "QPushButton:enabled { background-color: #32CD32; color: white; border-radius: 10px; }"
             "QPushButton:disabled { background-color: #206820; color: white; border-radius: 10px; opacity: 0.8;}"
@@ -179,7 +183,7 @@ class App(QWidget):
             fileExtension = "DAT Files (*.dat)"
         else:
             return  # O manejar el error
-    
+
         fileName, _ = QFileDialog.getOpenFileName(self, f"Seleccione archivo {fileType.upper()}", "", fileExtension, options=options)
         if fileName:
             fileLabel.setText(fileName)
@@ -201,13 +205,13 @@ class App(QWidget):
             self.diagnoseButton.setEnabled(True)
         else:
             self.diagnoseButton.setEnabled(False)
-    
+
         # Habilitar el botón de Borrar Archivos si al menos uno de los archivos está presente
         if self.heaFilePath is not None or self.datFilePath is not None:
             self.deleteFileButtton.setEnabled(True)
         else:
             self.deleteFileButtton.setEnabled(False)
-    
+
     def handleFile(self, file_path):
         if file_path.endswith(".hea"):
             self.fileLabelHEA.setText(file_path)
@@ -216,8 +220,7 @@ class App(QWidget):
             self.fileLabelDAT.setText(file_path)
             self.datFilePath = file_path
         self.checkFilesAndProcess()
-            
-    # Funciones para procesamiento y visualización de datos
+
     def loadAndProcessFiles(self):
         # Implementa aquí la lógica para leer y procesar los archivos .hea y .dat
         try:
@@ -226,7 +229,7 @@ class App(QWidget):
             #self.plot(self.ECGSeries[self.current_position:self.current_position+254], self.current_position)
         except Exception as e:
             self.showErrorAlert(str(e))
-         
+            
     def plotECG(self):
         try:
             # Cargar la señal ECG
@@ -264,13 +267,18 @@ class App(QWidget):
         ax = self.canvas.figure.subplots()
 
         # Convertir las muestras a tiempo (segundos)
-        time_axis = np.arange(len(self.signal_filtered)) / 360
+        time_axis = np.arange(len(self.signal_filtered[:1500])) / 360
+        # Establecer ticks cada 2 segundos para evitar aglomeración
+        ticks = np.arange(0, len(self.signal_filtered[:1500]), 360 * 2) / 360
+        time_labels = [seconds_to_min_sec(t) for t in ticks]
 
         # Dibujar en el canvas la señal completa con límite de eje X
-        ax.plot(time_axis[:1500], self.signal_filtered[:1500])
+        ax.plot(time_axis, self.signal_filtered[:1500])
 
         # Configurar los detalles de la gráfica
         ax.set_title('Full ECG Signal')
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(time_labels, rotation=45)  # Rotación menos extrema
         ax.set_xlabel('Time (seconds)')
         ax.set_ylabel('Amplitude')
 
@@ -286,8 +294,9 @@ class App(QWidget):
         peak_position = self.peaks[windowIndex]
 
         # Calcular las posiciones de inicio y fin de la ventana en la señal completa
-        window_start = peak_position - int(0.6 * 360)  # ajustar según cómo definiste tus ventanas
-        window_end = window_start + len(window)
+        window_width_samples = len(window)
+        window_start = max(peak_position - window_width_samples // 2, 0)
+        window_end = window_start + window_width_samples
 
         # Normalizar la ventana actual
         window_normalized = ecg_features.min_max_normalize(window)
@@ -297,14 +306,21 @@ class App(QWidget):
         ax = self.canvas.figure.subplots()
 
         # Convertir las muestras a tiempo (segundos)
-        time_axis = np.arange(window_start, window_end) / 360
+        time_axis = np.linspace(window_start / 360, window_end / 360, len(window_normalized))
+
+        # Establecer ticks (puedes ajustar la cantidad de ticks según sea necesario)
+        num_ticks = 5
+        tick_positions = np.linspace(window_start / 360, window_end / 360, num_ticks)
+        tick_labels = [seconds_to_min_sec(t) for t in tick_positions]
 
         # Dibujar en el canvas
         ax.plot(time_axis, window_normalized)
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels)
 
         # Configurar los detalles de la gráfica
         ax.set_title(f'ECG Window {windowIndex + 1}/{len(self.windows)}')
-        ax.set_xlabel('Time (seconds)')
+        ax.set_xlabel('Time (min:sec)')
         ax.set_ylabel('Amplitude')
 
         # Actualizar el canvas
@@ -320,21 +336,30 @@ class App(QWidget):
         end_position = min(start_position + self.window_size, len(data))
         segment = data[start_position:end_position]
         
-        # Usar el rango real de muestras para el eje x
-        time_axis = np.arange(start_position, end_position)
+        # Convertir el rango de muestras a tiempo (segundos)
+        time_axis = np.arange(start_position, end_position) / 360  # Asumiendo una fs de 360 Hz
+
+        # Establecer ticks cada medio segundo
+        ticks = np.arange(start_position, end_position, 360 / 2) / 360
+        time_labels = [seconds_to_min_sec(t) for t in ticks]
+
+        # Dibujar la señal ECG
         ax.plot(time_axis, segment)
         
         if peaks is not None:
             # Ajustar picos para el segmento actual
             peaks_in_segment = [p for p in peaks if start_position <= p < end_position]
-            ax.plot([p for p in peaks_in_segment], [segment[p - start_position] for p in peaks_in_segment], "x")
+            ax.plot(time_axis[[p - start_position for p in peaks_in_segment]], [segment[p - start_position] for p in peaks_in_segment], "x")
         
+        # Configurar los detalles de la gráfica
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(time_labels, rotation=90)
         ax.set_title('ECG Signal')
-        ax.set_xlabel('Sample Number')
+        ax.set_xlabel('Time (min:sec)')
         ax.set_ylabel('Amplitude')
-        self.canvas.figure.tight_layout()  # Ajustar el layout del gráfico
-        self.canvas.draw()
 
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
 
     def nextWindow(self):
         # Incrementar el índice de ventana y mostrar la siguiente ventana, solo si hay más ventanas disponibles
@@ -451,3 +476,11 @@ class App(QWidget):
     def updateDiagnosisUI(self, predictionB, predictionR):
         self.beatResult.setText(f"Beat Detected: {predictionB}")
         self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}")
+# Funciones para procesamiento y visualización de datos
+def seconds_to_min_sec(seconds):
+    if seconds < 60:
+        return f"{seconds:.2f}s"  # Solo muestra segundos con dos decimales si es menor a 60
+    else:
+        minutes = int(seconds // 60)
+        remaining_seconds = seconds % 60
+        return f"{minutes}m {remaining_seconds:.2f}s"  # Formato minutos y segundos con dos decimales
