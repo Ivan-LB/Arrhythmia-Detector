@@ -17,6 +17,38 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.regularizers import l1, l2
 from imblearn.over_sampling import SMOTE
 
+def calculate_metrics(cm, class_index):
+    TP = cm[class_index, class_index]
+    FP = cm[:, class_index].sum() - TP
+    FN = cm[class_index, :].sum() - TP
+    TN = cm.sum() - (TP + FP + FN)
+
+    sensitivity = TP / (TP + FN) if (TP + FN) != 0 else 0
+    specificity = TN / (TN + FP) if (TN + FP) != 0 else 0
+    ppv = TP / (TP + FP) if (TP + FP) != 0 else 0
+    npv = TN / (TN + FN) if (TN + FN) != 0 else 0
+
+    return sensitivity, specificity, ppv, npv
+
+def get_all_metrics(cm, num_classes):
+    sensitivities, specificities, ppvs, npvs = [], [], [], []
+    for i in range(num_classes):
+        sens, spec, ppv, npv = calculate_metrics(cm, i)
+        sensitivities.append(sens)
+        specificities.append(spec)
+        ppvs.append(ppv)
+        npvs.append(npv)
+    return sensitivities, specificities, ppvs, npvs
+
+def create_summary_table(sensitivities, specificities, ppvs, npvs, class_names):
+    data = {
+        'Sensibilidad': sensitivities,
+        'Especificidad': specificities,
+        'VPP': ppvs,
+        'VPN': npvs
+    }
+    return pd.DataFrame(data, index=class_names)
+
 # Cargar datos
 ruta_csv = 'C:\\Users\\XPG\\Desktop\\DiagnosticoAsistido\\Arrhythmia-Detector\\Data\\ecg_features3.csv'  # Reemplaza con la ruta a tu archivo CSV
 datos = pd.read_csv(ruta_csv)
@@ -116,6 +148,9 @@ y_pred_rhythm = model_rhythm.predict(X_test)
 y_pred_beat = np.argmax(y_pred_beat, axis=1)
 y_pred_rhythm = np.argmax(y_pred_rhythm, axis=1)
 
+# Nombres de las clases para los beats y ritmos
+class_names_beat = ['Normal', 'Right bundle','Atrial premature','Premature ventricular contraction']
+class_names_rhythm = ['Normal', 'Bradycardia', 'Tachycardia'] 
 # Matriz de confusión y reporte de clasificación para el tipo de latido
 print("Confusion Matrix for Beat Type:")
 cm_beat = confusion_matrix(y_test_beat.argmax(axis=1), y_pred_beat)
@@ -129,6 +164,17 @@ cm_rhythm = confusion_matrix(y_test_rhythm.argmax(axis=1), y_pred_rhythm)
 print(cm_rhythm)
 print("Classification Report for Rhythm Class:")
 print(classification_report(y_test_rhythm.argmax(axis=1), y_pred_rhythm))
+
+# Calcula las métricas para cada clase
+num_classes_beat = cm_beat.shape[0]
+sensitivities_beat, specificities_beat, ppvs_beat, npvs_beat = get_all_metrics(cm_beat, num_classes_beat)
+summary_table_beat = create_summary_table(sensitivities_beat, specificities_beat, ppvs_beat, npvs_beat, class_names_beat)
+print(summary_table_beat)
+
+num_classes_rhythm = cm_rhythm.shape[0]
+sensitivities_rhythm, specificities_rhythm, ppvs_rhythm, npvs_rhythm = get_all_metrics(cm_rhythm, num_classes_rhythm)
+summary_table_rhythm = create_summary_table(sensitivities_rhythm, specificities_rhythm, ppvs_rhythm, npvs_rhythm, class_names_rhythm)
+print(summary_table_rhythm)
 
 # Gráficas de rendimiento para el modelo de tipo de latido
 plt.figure(figsize=(12, 5))
@@ -170,9 +216,6 @@ def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.Blu
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 
-# Nombres de las clases para los beats y ritmos
-class_names_beat = ['Normal', 'Right bundle','Atrial premature','Premature ventricular contraction']
-class_names_rhythm = ['Normal', 'Bradycardia', 'Tachycardia'] 
 # Graficar las matrices de confusión para ambos modelos
 plt.figure(figsize=(10, 10))
 plot_confusion_matrix(cm_beat, class_names_beat, title='Confusion Matrix for Beat Type')
