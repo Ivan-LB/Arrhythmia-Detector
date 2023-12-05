@@ -12,6 +12,11 @@ MODEL_RHYTHM_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/m
 MODEL_BEAT_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/modelo_ecg_beatV2.h5'
 SCALER_FILE_PATH = '/Users/ivanlorenzanabelli/Arrhythmia-Detector/Models/scaler_ecgV2.pk1'
 
+ # Cargar el modelo y el scaler
+modelRhythm = tf.keras.models.load_model(MODEL_RHYTHM_FILE_PATH)
+modelBeat = tf.keras.models.load_model(MODEL_BEAT_FILE_PATH)
+scaler = joblib.load(SCALER_FILE_PATH)
+
 # Function definitions
 def get_ml_ii_index(header_lines):
     """
@@ -157,11 +162,6 @@ def predict_ecg(features):
     # Convertir las características en un DataFrame
     df = pd.DataFrame([features], columns=feature_labels)
 
-    # Cargar el modelo y el scaler
-    modelRhythm = tf.keras.models.load_model(MODEL_RHYTHM_FILE_PATH)
-    modelBeat = tf.keras.models.load_model(MODEL_BEAT_FILE_PATH)
-    scaler = joblib.load(SCALER_FILE_PATH)  # Asegúrate de haber guardado tu scaler
-
     # Normalizar las características
     features_scaled = scaler.transform(df)
 
@@ -191,26 +191,10 @@ def get_beat_label(prediction):
     """
     pred_value = prediction[0]
     annotation_mapping = {
-        0: "N: Normal",
-        "L": "Left bundle branch block beat",
-        1: "R: Right bundle branch block beat",
-        2: "A: Atrial premature beat",
-        "a": "Aberrated atrial premature beat",
-        "J": "Nodal (junctional) premature beat",
-        "S": "Supraventricular premature beat",
-        3: "V: Premature ventricular contraction",
-        "F": "Fusion of ventricular and normal beat",
-        "[": "Start of ventricular flutter/fibrillation",
-        "!": "Ventricular flutter wave",
-        "]": "End of ventricular flutter/fibrillation",
-        "e": "Atrial escape beat",
-        "j": "Nodal (junctional) escape beat",
-        "E": "Ventricular escape beat",
-        "/": "Paced beat",
-        "f": "Fusion of paced and normal beat",
-        "x": "Non-conducted P-wave (blocked APB)",
-        "Q": "Unclassifiable",
-        "|": "Isolated QRS-like artifact"
+        0: "Normal", #N
+        1: "Right bundle branch block beat", #R
+        2: "Atrial premature beat", #A
+        3: "Premature ventricular contraction"#V
     }
     return annotation_mapping.get(pred_value, "Unknown")
 

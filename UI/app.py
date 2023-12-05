@@ -263,8 +263,14 @@ class App(QWidget):
         # Implementa aquí la lógica para leer y procesar los archivos .hea y .dat
         try:
             self.processECGFiles(self.heaFilePath, self.datFilePath)
-            #self.ECGSeries = ... # Carga la serie ECG desde los archivos
-            #self.plot(self.ECGSeries[self.current_position:self.current_position+254], self.current_position)
+        except Exception as e:
+            self.showErrorAlert(str(e))
+    
+    def processECGFiles(self, heaFilePath, datFilePath):
+        # Implementa la lógica para procesar los archivos aquí
+        # Por ejemplo, podrías cargar la señal ECG y realizar algún procesamiento inicial
+        try:
+            self.checkFilesAndEnablePlotButton()
         except Exception as e:
             self.showErrorAlert(str(e))
             
@@ -280,7 +286,7 @@ class App(QWidget):
             signal_filtered = lfilter(b, a, signal_centered)
 
             # Detectar los picos R
-            peaks, _ = find_peaks(signal_filtered, distance=int(0.7 * record.fs))
+            peaks, _ = find_peaks(signal_filtered, distance=int(0.8 * record.fs))
 
             # Almacenar las ventanas y los picos
             self.windows = [ecg_features.apply_window(signal_filtered, peak, record.fs) for peak in peaks]
@@ -539,6 +545,8 @@ class App(QWidget):
                 # Habilitar o deshabilitar los botones "Anterior" y "Siguiente" según sea necesario
                 self.button1.setEnabled(window_index > 0)
                 self.button2.setEnabled(window_index < len(self.windows) - 1)
+                self.beatResult.setText("Beat Detected:")
+                self.rhythmResult.setText("Rythm Diagnosed:")
                 self.searchField.setText("")
             else:
                 QMessageBox.information(self, "Search", "Window number out of range.")
