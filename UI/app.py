@@ -527,13 +527,13 @@ class App(QWidget):
             current_window = self.windows[self.currentWindowIndex]
 
             features = ecg_features.extract_features_from_window(current_window, 360)
-            predictionB, predictionR = ecg_features.predict_ecg(features)
+            predictionB, predictionR, percentageBeatPrediction, percentageRhythmPrediction = ecg_features.predict_ecg(features)
 
-            self.updateDiagnosisUI(predictionB,predictionR)
+            self.updateDiagnosisUI(predictionB,predictionR, percentageBeatPrediction, percentageRhythmPrediction)
 
-    def updateDiagnosisUI(self, predictionB, predictionR):
-        self.beatResult.setText(f"Beat Detected: {predictionB}")
-        self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}")
+    def updateDiagnosisUI(self, predictionB, predictionR, percentageBeatPrediction, percentageRhythmPrediction):
+        self.beatResult.setText(f"Beat Detected: {predictionB}, Probability: {percentageBeatPrediction[0]*100:.3f}%")
+        self.rhythmResult.setText(f"Rythm Diagnosed: {predictionR}, Probability: {percentageRhythmPrediction[0]*100.:.3f} %")
 
     def performSearch(self):
         search_query = self.searchField.text()

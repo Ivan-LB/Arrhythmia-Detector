@@ -59,7 +59,7 @@ y_beat = to_categorical(datos['BeatType'])
 y_rhythm = to_categorical(datos['RhythmClass'])
 
 # Dividir en conjuntos de entrenamiento y prueba
-X_train, X_test, y_train_beat, y_test_beat, y_train_rhythm, y_test_rhythm = train_test_split(X, y_beat, y_rhythm, test_size=0.3, random_state=42)
+X_train, X_test, y_train_beat, y_test_beat, y_train_rhythm, y_test_rhythm = train_test_split(X, y_beat, y_rhythm, train_size=0.7, test_size=0.3, random_state=42)
 
 # Normalizar características
 scaler = StandardScaler()

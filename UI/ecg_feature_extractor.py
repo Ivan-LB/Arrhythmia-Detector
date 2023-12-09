@@ -155,7 +155,7 @@ def predict_ecg(features):
     """
     feature_labels = ["RPeakCount", "SpectralEnergy", "TotalPSD", "WaveletEnergy", "ShannonEntropy", "SignalSTD"]
     
-    # Asegúrate de que 'features' es un array o lista con 6 elementos
+    # Asegurar de que 'features' es un array o lista con 6 elementos
     if len(features) != 6:
         return "Error: Se requieren exactamente 6 características"
 
@@ -169,14 +169,17 @@ def predict_ecg(features):
     predictionsBeats = modelBeat.predict(features_scaled, verbose=0)
     predictionsRhythm = modelRhythm.predict(features_scaled, verbose=0)
     
-    # Convertir las predicciones a etiquetas legibles (opcional)
+    # Convertir las predicciones a etiquetas legibles
     beat_label = np.argmax(predictionsBeats, axis=1)
+    percentageBeatPrediction = predictionsBeats[0][beat_label]
+
     rhythm_label = np.argmax(predictionsRhythm, axis=1)
+    percentageRhythmPrediction = predictionsRhythm[0][rhythm_label]
 
     rhythm_labelP = get_rhythm_label(rhythm_label)
     beat_labelP = get_beat_label(beat_label)
 
-    return beat_labelP, rhythm_labelP
+    return beat_labelP, rhythm_labelP, percentageBeatPrediction, percentageRhythmPrediction
 
 def get_beat_label(prediction):
     """
